@@ -11,37 +11,34 @@ import { Label } from '@/components/ui/label';
 import React, { useState, useEffect } from 'react';
 import { useToast } from "@/hooks/use-toast";
 import { format } from 'date-fns';
+import { MOCK_TIME_SLOTS } from '@/lib/mockData'; // Updated import
 
 interface BookAppointmentModalProps {
   practitioner: Practitioner;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  initialDate?: Date;
+  initialTime?: string;
 }
 
-const MOCK_TIME_SLOTS: TimeSlot[] = [
-  { time: '09:00 AM', available: true },
-  { time: '10:00 AM', available: true },
-  { time: '11:00 AM', available: false }, // Example of unavailable slot
-  { time: '02:00 PM', available: true },
-  { time: '03:00 PM', available: true },
-  { time: '04:00 PM', available: false },
-];
-
-
-export default function BookAppointmentModal({ practitioner, open, onOpenChange }: BookAppointmentModalProps) {
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
-  const [selectedTime, setSelectedTime] = useState<string | undefined>(undefined);
+export default function BookAppointmentModal({ practitioner, open, onOpenChange, initialDate, initialTime }: BookAppointmentModalProps) {
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(initialDate);
+  const [selectedTime, setSelectedTime] = useState<string | undefined>(initialTime);
   const [bookingMode, setBookingMode] = useState<'online' | 'in-person'>('online');
   const { toast } = useToast();
 
   useEffect(() => {
-    // Reset state when modal is closed or practitioner changes
-    if (!open) {
+    // Reset state when modal is closed or practitioner changes, but respect initial values if provided again
+    if (open) {
+      setSelectedDate(initialDate || undefined);
+      setSelectedTime(initialTime || undefined);
+      setBookingMode('online');
+    } else {
       setSelectedDate(undefined);
       setSelectedTime(undefined);
       setBookingMode('online');
     }
-  }, [open, practitioner]);
+  }, [open, practitioner, initialDate, initialTime]);
 
   const handleBooking = () => {
     if (!selectedDate || !selectedTime) {
@@ -155,4 +152,3 @@ export default function BookAppointmentModal({ practitioner, open, onOpenChange 
     </Dialog>
   );
 }
-
