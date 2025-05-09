@@ -38,7 +38,7 @@ const generateMeditationData = () => [
 ];
 
 const commonProperties = {
-  margin: { top: 40, right: 80, bottom: 80, left: 80 },
+  margin: { top: 20, right: 40, bottom: 70, left: 40 }, // Adjusted margins
   innerRadius: 0.5, // This makes it a donut chart
   padAngle: 0.7,
   cornerRadius: 3,
@@ -83,7 +83,7 @@ const commonProperties = {
       direction: 'row' as const,
       justify: false,
       translateX: 0,
-      translateY: 56,
+      translateY: 50, // Adjusted legend Y position
       itemsSpacing: 0,
       itemWidth: 100,
       itemHeight: 18,

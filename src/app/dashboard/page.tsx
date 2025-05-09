@@ -1,3 +1,4 @@
+
 import MedicationAdherenceCalendar from '@/components/dashboard/MedicationAdherenceCalendar';
 import CalendarLegend from '@/components/dashboard/CalendarLegend';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -58,15 +59,27 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      <Card className="shadow-lg">
-        <CardHeader>
-          <CardTitle className="text-xl font-semibold text-primary">Yoga Practice Breakdown</CardTitle>
-          <CardDescription>Distribution of yoga types and focus areas.</CardDescription>
-        </CardHeader>
-        <CardContent className="p-2 sm:p-4">
-          <YogaSunburstChart />
-        </CardContent>
-      </Card>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <Card className="shadow-lg">
+          <CardHeader>
+            <CardTitle className="text-xl font-semibold text-primary">Yoga Practice Breakdown</CardTitle>
+            <CardDescription>Distribution of yoga types and focus areas.</CardDescription>
+          </CardHeader>
+          <CardContent className="p-2 sm:p-4">
+            <YogaSunburstChart />
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-lg">
+          <CardHeader>
+            <CardTitle className="text-xl font-semibold text-primary">Meditation Practices</CardTitle>
+            <CardDescription>Distribution of time spent in different meditation types.</CardDescription>
+          </CardHeader>
+          <CardContent className="p-2 sm:p-4">
+            <MeditationDonutChart />
+          </CardContent>
+        </Card>
+      </div>
 
       <Card className="shadow-lg">
         <CardHeader>
@@ -75,16 +88,6 @@ export default function DashboardPage() {
         </CardHeader>
         <CardContent className="p-2 sm:p-4">
           <SleepMetricsChart />
-        </CardContent>
-      </Card>
-
-       <Card className="shadow-lg">
-        <CardHeader>
-          <CardTitle className="text-xl font-semibold text-primary">Meditation Practices</CardTitle>
-          <CardDescription>Distribution of time spent in different meditation types.</CardDescription>
-        </CardHeader>
-        <CardContent className="p-2 sm:p-4">
-          <MeditationDonutChart />
         </CardContent>
       </Card>
 
