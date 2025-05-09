@@ -82,14 +82,15 @@ export default function BiomarkersChart() {
           >
             <strong>{id}</strong>
             <br />
-            Current Value: {value}
+            Current Value: {value ?? 'N/A'}
             <br />
-            Target: {itemData.markers[0]}
+            Target: {itemData?.markers?.[0] ?? 'N/A'}
             <br />
-            Ranges: {itemData.ranges.join(' | ')}
+            Ranges: {itemData?.ranges?.join(' | ') ?? 'N/A'}
           </div>
         )}
       />
     </div>
   );
 }
+
