@@ -14,18 +14,30 @@ import BiomarkersChart from '@/components/dashboard/charts/BiomarkersChart';
 export default function DashboardPage() {
   return (
     <div className="space-y-8">
-      <Card className="shadow-lg">
-        <CardHeader>
-          <CardTitle className="text-2xl font-semibold text-primary">Medication Adherence Calendar</CardTitle>
-          <CardDescription>
-            Track your daily medication adherence. Colors indicate the percentage of medication taken.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="flex flex-col items-center gap-6 p-6">
-          <MedicationAdherenceCalendar />
-          <CalendarLegend />
-        </CardContent>
-      </Card>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
+        <Card className="shadow-lg">
+          <CardHeader>
+            <CardTitle className="text-xl font-semibold text-primary">Medication Adherence</CardTitle>
+            <CardDescription>
+              Daily medication adherence. Colors indicate medication taken.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col items-center gap-4 p-2 sm:p-4">
+            <MedicationAdherenceCalendar />
+            <CalendarLegend />
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-lg">
+          <CardHeader>
+            <CardTitle className="text-xl font-semibold text-primary">Key Biomarkers</CardTitle>
+            <CardDescription>Current status of key health indicators. Scroll to view all.</CardDescription>
+          </CardHeader>
+          <CardContent className="p-2 sm:p-4 max-h-[600px] lg:max-h-[calc(600px+100px)] overflow-y-auto"> {/* Adjusted max-h for lg screens to better align with calendar height */}
+            <BiomarkersChart />
+          </CardContent>
+        </Card>
+      </div>
 
       <Card className="shadow-lg">
         <CardHeader>
@@ -90,17 +102,8 @@ export default function DashboardPage() {
           <SleepMetricsChart />
         </CardContent>
       </Card>
-
-      <Card className="shadow-lg">
-        <CardHeader>
-          <CardTitle className="text-xl font-semibold text-primary">Key Biomarkers</CardTitle>
-          <CardDescription>Current status of key health indicators. Scroll to view all.</CardDescription>
-        </CardHeader>
-        <CardContent className="p-2 sm:p-4 max-h-[600px] overflow-y-auto">
-          <BiomarkersChart />
-        </CardContent>
-      </Card>
       
     </div>
   );
 }
+
