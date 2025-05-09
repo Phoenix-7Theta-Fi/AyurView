@@ -6,6 +6,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import DynamicIcon from './DynamicIcon'; // Import the new DynamicIcon component
 
 interface ActivityDetailModalProps {
   activity: TreatmentPlanActivity;
@@ -46,7 +47,7 @@ export default function ActivityDetailModal({ activity, open, onOpenChange }: Ac
       <DialogContent className="sm:max-w-lg bg-card text-card-foreground shadow-xl">
         <DialogHeader className="pt-4 text-center items-center">
           <div className={`p-3 rounded-full ${getCategoryColor()} inline-block mb-3`}>
-            <activity.icon size={32} className="text-white" />
+            <DynamicIcon iconName={activity.icon} size={32} className="text-white" />
           </div>
           <DialogTitle className="text-2xl font-bold text-primary">{activity.title}</DialogTitle>
           <DialogDescription className="text-md text-muted-foreground">

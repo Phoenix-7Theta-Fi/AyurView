@@ -115,6 +115,6 @@ export interface TreatmentPlanActivity {
   category: string; // e.g., "Wellness", "Fitness", "Nutrition", "Medical"
   description: string; // Short description for the card
   details: string; // Longer details for the modal, can be markdown/HTML
-  icon: LucideIcon; // Lucide icon component
+  icon: string; // Name of the Lucide icon (e.g., "Coffee", "Sprout")
   status: 'pending' | 'completed' | 'missed'; // For potential tracking
 }

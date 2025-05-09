@@ -5,6 +5,7 @@ import type { TreatmentPlanActivity } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { CheckCircle, XCircle, AlertCircle, ArrowRight } from 'lucide-react';
+import DynamicIcon from './DynamicIcon'; // Import the new DynamicIcon component
 
 interface ActivityCardProps {
   activity: TreatmentPlanActivity;
@@ -47,7 +48,7 @@ export default function ActivityCard({ activity, onClick }: ActivityCardProps) {
       <CardContent className="p-4 flex items-center justify-between gap-4">
         <div className="flex items-center gap-4 flex-grow">
           <div className="flex flex-col items-center justify-center p-2 rounded-md bg-primary/10 text-primary w-16 h-16">
-            <activity.icon size={24} />
+            <DynamicIcon iconName={activity.icon} size={24} />
             <span className="text-xs font-medium mt-1">{activity.time}</span>
           </div>
           <div className="flex-grow">

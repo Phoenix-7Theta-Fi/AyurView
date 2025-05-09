@@ -1,7 +1,6 @@
 
 import type { Practitioner, Product, TimeSlot, Milestone, ConcerningBiomarker, UpcomingConsultation, TreatmentPlanActivity } from '@/lib/types';
-import { Pill, Zap, Sprout, Apple, Brain, Coffee, Dumbbell, CheckCircle, XCircle, AlertCircle, ListChecks, Activity } from 'lucide-react';
-
+// Lucide icons will be dynamically imported in components, so direct imports here are removed.
 
 export const mockPractitioners: Practitioner[] = [
   {
@@ -13,7 +12,7 @@ export const mockPractitioners: Practitioner[] = [
     rating: 4.8,
     availability: 'Mon, Wed, Fri (9 AM - 5 PM)',
     location: 'Online & New Delhi Clinic',
-    dataAiHint: 'indian doctor woman'
+    // dataAiHint removed as PractitionerCard uses specific randomuser.me URLs
   },
   {
     id: '2',
@@ -24,7 +23,6 @@ export const mockPractitioners: Practitioner[] = [
     rating: 4.9,
     availability: 'Tue, Thu, Sat (7 AM - 11 AM)',
     location: 'Online',
-    dataAiHint: 'yoga instructor male'
   },
   {
     id: '3',
@@ -35,7 +33,6 @@ export const mockPractitioners: Practitioner[] = [
     rating: 4.7,
     availability: 'Flexible (By Appointment)',
     location: 'Pune Wellness Center',
-    dataAiHint: 'wellness coach woman'
   },
   {
     id: '4',
@@ -46,7 +43,6 @@ export const mockPractitioners: Practitioner[] = [
     rating: 4.6,
     availability: 'Mon - Sat (10 AM - 6 PM)',
     location: 'Jaipur Ayurveda Hospital',
-    dataAiHint: 'doctor male traditional'
   },
   {
     id: '5',
@@ -57,7 +53,6 @@ export const mockPractitioners: Practitioner[] = [
     rating: 4.8,
     availability: 'Mon, Tue, Thu (2 PM - 7 PM)',
     location: 'Online',
-    dataAiHint: 'nutritionist woman'
   },
   {
     id: '6',
@@ -68,7 +63,6 @@ export const mockPractitioners: Practitioner[] = [
     rating: 4.5,
     availability: 'Wed, Fri (11 AM - 4 PM)',
     location: 'Online & Rishikesh Ashram',
-    dataAiHint: 'spiritual guide india'
   },
 ];
 
@@ -204,61 +198,60 @@ export const mockDailySchedule: TreatmentPlanActivity[] = [
     id: 'act1', time: "06:30 AM", title: "Wake Up & Hydrate", category: "Lifestyle",
     description: "Drink a glass of warm water with lemon.",
     details: "Upon waking, drink a glass of warm water (approx. 250ml) with the juice of half a lemon. This helps kickstart metabolism, aids digestion, and cleanses the system. Avoid cold water.",
-    icon: Coffee, status: 'pending'
+    icon: 'Coffee', status: 'pending'
   },
   {
     id: 'act2', time: "07:00 AM", title: "Gentle Yoga & Pranayama", category: "Wellness",
     description: "30 minutes of Vata-pacifying yoga and breathing exercises.",
     details: "Focus on slow, grounding yoga asanas like Pawanmuktasana, Marjaryasana-Bitilasana, and Balasana. Follow with Nadi Shodhana (Alternate Nostril Breathing) for 10 minutes to calm the nervous system. Find a quiet space and use a comfortable mat.",
-    icon: Sprout, status: 'pending'
+    icon: 'Sprout', status: 'pending'
   },
   {
     id: 'act3', time: "08:00 AM", title: "Ayurvedic Breakfast", category: "Nutrition",
     description: "Warm, nourishing, and easy-to-digest meal.",
     details: "Example: Cooked oatmeal with ghee, cinnamon, and stewed apples. Or, moong dal kitchari. Avoid dry, cold, or raw foods. Eat mindfully in a calm environment.",
-    icon: Apple, status: 'pending'
+    icon: 'Apple', status: 'pending'
   },
   {
     id: 'act4', time: "09:00 AM", title: "Herbal Supplements", category: "Medical",
     description: "Take prescribed Ashwagandha and Brahmi.",
     details: "Take 1 capsule of Ashwagandha and 1 capsule of Brahmi with warm water or as directed by Dr. Sharma. These herbs help manage stress and support mental clarity.",
-    icon: Pill, status: 'pending'
+    icon: 'Pill', status: 'pending'
   },
   {
     id: 'act5', time: "10:00 AM", title: "Focused Work Block", category: "Productivity",
     description: "90 minutes of focused work, minimize distractions.",
     details: "Engage in your most important tasks. Turn off notifications, close unnecessary tabs. Take short breaks if needed but maintain focus. This structured approach can reduce Vata aggravation from scattered attention.",
-    icon: Brain, status: 'pending'
+    icon: 'Brain', status: 'pending'
   },
   {
     id: 'act6', time: "01:00 PM", title: "Lunch & Mindful Eating", category: "Nutrition",
     description: "Warm, cooked lunch. Eat without distractions.",
     details: "Example: Basmati rice with cooked vegetables (e.g., carrots, zucchini, green beans) and a small portion of well-cooked lentils. Include a teaspoon of ghee. Chew food thoroughly.",
-    icon: Apple, status: 'pending'
+    icon: 'Apple', status: 'pending'
   },
   {
     id: 'act7', time: "03:00 PM", title: "Short Walk & Nature", category: "Wellness",
     description: "15-20 minute gentle walk, preferably in nature.",
     details: "A gentle walk aids digestion and calms the mind. If possible, walk in a park or green space. Avoid strenuous exercise during this time if feeling depleted.",
-    icon: Zap, status: 'pending'
+    icon: 'Zap', status: 'pending'
   },
   {
     id: 'act8', time: "06:00 PM", title: "Light Dinner", category: "Nutrition",
     description: "Easy-to-digest dinner, at least 2 hours before bed.",
     details: "Example: Vegetable soup or a small bowl of kitchari. Avoid heavy, oily, or spicy foods in the evening. Eating early allows for better digestion before sleep.",
-    icon: Apple, status: 'pending'
+    icon: 'Apple', status: 'pending'
   },
   {
     id: 'act9', time: "08:00 PM", title: "Evening Relaxation", category: "Lifestyle",
     description: "Wind-down routine: Reading, journaling, no screens.",
     details: "Engage in calming activities like reading a book (non-stimulating), journaling your thoughts, or listening to soothing music. Dim the lights. Avoid electronic screens (TV, phone, computer) for at least one hour before bed.",
-    icon: Activity, status: 'pending'
+    icon: 'Activity', status: 'pending'
   },
   {
     id: 'act10', time: "09:30 PM", title: "Bedtime Routine & Sleep", category: "Lifestyle",
     description: "Prepare for bed, aim for 7-8 hours of sleep.",
     details: "Practice good sleep hygiene: ensure your bedroom is dark, quiet, and cool. Consider a warm (non-caffeinated) herbal tea like chamomile. Try to go to bed and wake up around the same time each day.",
-    icon: CheckCircle, status: 'pending'
+    icon: 'CheckCircle', status: 'pending' // Note: CheckCircle is typically for completion status, consider Moon or Bed icon if available for "Bedtime"
   }
 ];
-
