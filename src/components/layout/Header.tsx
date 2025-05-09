@@ -3,13 +3,14 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Bot, LayoutDashboard, Leaf } from 'lucide-react';
+import { Bot, LayoutDashboard, Leaf, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 
 const navItems = [
   { href: '/chatbot', label: 'Chatbot', icon: Bot },
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/practitioners', label: 'Practitioners', icon: Users },
 ];
 
 export default function Header() {
@@ -22,7 +23,7 @@ export default function Header() {
           <Leaf size={28} />
           <h1 className="text-2xl font-bold">AyurAid</h1>
         </Link>
-        <nav className="flex items-center gap-2 sm:gap-4">
+        <nav className="flex items-center gap-1 sm:gap-2">
           {navItems.map((item) => (
             <Button
               key={item.href}
@@ -35,7 +36,7 @@ export default function Header() {
                   : "text-foreground hover:bg-primary/10 hover:text-primary"
               )}
             >
-              <Link href={item.href} className="flex items-center gap-2 px-3 py-2 rounded-md">
+              <Link href={item.href} className="flex items-center gap-2 px-2 py-2 sm:px-3 rounded-md">
                 <item.icon size={20} />
                 <span className="hidden sm:inline">{item.label}</span>
               </Link>
