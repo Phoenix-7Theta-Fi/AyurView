@@ -3,7 +3,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Bot, LayoutDashboard, Leaf, Users, ShoppingCart as ShoppingCartLucideIcon } from 'lucide-react';
+import { Bot, LayoutDashboard, Leaf, Users, ShoppingCart as ShoppingCartLucideIcon, ClipboardList } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import ShoppingCartIcon from '@/components/shop/ShoppingCartIcon';
@@ -12,6 +12,7 @@ import ShoppingCart from '@/components/shop/ShoppingCart'; // Import the cart mo
 const navItems = [
   { href: '/chatbot', label: 'Chatbot', icon: Bot },
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/treatment-plan', label: 'Treatment Plan', icon: ClipboardList },
   { href: '/practitioners', label: 'Practitioners', icon: Users },
   { href: '/shop', label: 'Shop', icon: ShoppingCartLucideIcon },
 ];

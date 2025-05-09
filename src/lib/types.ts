@@ -1,6 +1,7 @@
 
 import type { ToolCall, ToolRequestPart, ToolResponsePart } from "genkit"; // Ensure genkit types are available
 import type { GenerateResponse } from "genkit/generate";
+import type { LucideIcon } from "lucide-react";
 
 export interface Practitioner {
   id: string;
@@ -79,4 +80,41 @@ export interface AyurvedicGuidanceAIFullResponse {
     productAddedToCartStatus?: { success: boolean; message: string; product?: Product; quantity?: number };
   };
   error?: string; // If an error occurred
+}
+
+// Types for Treatment Plan Page
+export interface Milestone {
+  id: string;
+  title: string;
+  status: 'completed' | 'in-progress' | 'pending';
+  dueDate?: string; // Optional due date
+}
+
+export interface ConcerningBiomarker {
+  id: string;
+  name: string;
+  currentValue: string;
+  targetValue: string;
+  unit: string;
+  lastChecked: string;
+}
+
+export interface UpcomingConsultation {
+  id: string;
+  practitionerName: string;
+  specialization: string;
+  date: string;
+  time: string;
+  mode: 'online' | 'in-person';
+}
+
+export interface TreatmentPlanActivity {
+  id: string;
+  time: string; // e.g., "07:00 AM"
+  title: string; // e.g., "Morning Yoga"
+  category: string; // e.g., "Wellness", "Fitness", "Nutrition", "Medical"
+  description: string; // Short description for the card
+  details: string; // Longer details for the modal, can be markdown/HTML
+  icon: LucideIcon; // Lucide icon component
+  status: 'pending' | 'completed' | 'missed'; // For potential tracking
 }
