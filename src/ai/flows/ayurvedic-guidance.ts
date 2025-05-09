@@ -1,4 +1,3 @@
-
 'use server';
 /**
  * @fileOverview Provides Ayurvedic guidance, finds practitioners, books appointments,
@@ -209,7 +208,7 @@ const addProductToCartClientProxyTool = ai.defineTool(
 const ayurvedicGuidancePrompt = ai.definePrompt({
   name: 'ayurvedicGuidancePrompt',
   input: { schema: AyurvedicGuidanceInputSchema },
-  output: { schema: AyurvedicGuidanceLLMOutputSchema }, // LLM's direct text output
+  output: { schema: AyurvedicGuidanceLLMOutputSchema }, // LLM's direct text output should conform to this
   tools: [
     findPractitionersTool,
     getPractitionerAvailabilityTool,
@@ -248,24 +247,96 @@ If no tool is used, your direct advice or question to the user should be in the 
 
 
 // The flow returns the full GenerateResponse object from the prompt
+// This flow's outputSchema was mismatched with its actual return type, causing validation errors.
+// For now, we will have getAyurvedicGuidance call the prompt directly.
+// This flow definition can be revised or removed if not used elsewhere.
+/*
 const ayurvedicGuidanceFlow = ai.defineFlow(
   {
     name: 'ayurvedicGuidanceFlow',
     inputSchema: AyurvedicGuidanceInputSchema,
-    // The flow's defined output schema is for documentation/type-hinting of the LLM's direct output part.
-    // However, the flow actually returns the entire GenerateResponse object.
-    outputSchema: AyurvedicGuidanceLLMOutputSchema,
+    // The flow's defined output schema should match what it actually returns.
+    // If it's returning a GenerateResponse, this schema is incorrect.
+    outputSchema: AyurvedicGuidanceLLMOutputSchema, 
   },
   async (input): Promise<GenerateResponse<AyurvedicGuidanceInternalOutput>> => {
     const genResponse = await ayurvedicGuidancePrompt(input);
     return genResponse;
   }
 );
+*/
 
 // Wrapper function for client-side usage.
-// It's typed to return a simplified version of GenerateResponse structure for client convenience.
+// It calls the prompt directly and processes the full GenerateResponse.
 export async function getAyurvedicGuidance(input: AyurvedicGuidanceInput): Promise<AyurvedicGuidanceAIFullResponse> {
-  const response = await ayurvedicGuidanceFlow(input) as GenerateResponse<AyurvedicGuidanceInternalOutput>;
+  // Call the prompt directly to get the full GenerateResponse object
+  const response: GenerateResponse<AyurvedicGuidanceInternalOutput | null> = await ayurvedicGuidancePrompt(input);
+
+  let aiTextOutput: string;
+  
+  // Try to get the answer from the parsed output first
+  if (response.output && response.output.answer) {
+    aiTextOutput = response.output.answer;
+  } 
+  // If parsing failed (e.g. LLM wrapped JSON in markdown), try to parse from raw text
+  else if (response.text) { 
+    try {
+      // Remove markdown and parse
+      const cleanedText = response.text.replace(/```json\n?|\n?```/g, '').trim();
+      const parsedJson = JSON.parse(cleanedText);
+      // Validate against the schema (Genkit does this for response.output, we do it here for fallback)
+      const validatedOutput = AyurvedicGuidanceLLMOutputSchema.parse(parsedJson);
+      aiTextOutput = validatedOutput.answer;
+    } catch (e) {
+      console.warn("AI response was not in expected JSON object format, attempting to extract from raw text. Error:", e, "Response.text:", response.text);
+      // As a further fallback, try to find any JSON structure in the text
+      const jsonMatch = response.text.match(/{[\s\S]*}/);
+      if (jsonMatch && jsonMatch[0]) {
+        try {
+            console.warn("Attempting to parse extracted JSON from raw text for aiTextOutput.");
+            const parsedJsonFromMatch = JSON.parse(jsonMatch[0]);
+            const validatedOutputFromMatch = AyurvedicGuidanceLLMOutputSchema.parse(parsedJsonFromMatch);
+            aiTextOutput = validatedOutputFromMatch.answer;
+        } catch (e2) {
+            console.error("Failed to parse extracted JSON for aiTextOutput:", e2, "Extracted text:", jsonMatch[0]);
+            aiTextOutput = response.text; // Ultimate fallback to the raw text
+        }
+      } else {
+        aiTextOutput = response.text; // Ultimate fallback to the raw text if no JSON structure found
+      }
+      // If we fell back to raw text, one last check: perhaps the raw text *is* the JSON string {"answer": "..."}
+      // that the schema expected, but it was wrapped, and initial parsing failed somewhere.
+      if (aiTextOutput === response.text) {
+          try {
+              const attemptDirectParse = JSON.parse(aiTextOutput);
+              if(attemptDirectParse.answer && typeof attemptDirectParse.answer === 'string') {
+                  aiTextOutput = attemptDirectParse.answer;
+                  console.warn("Successfully parsed aiTextOutput as direct JSON with 'answer' key after primary parsing failed.");
+              } else {
+                  console.warn("Raw text fallback was JSON but not in the {answer: ...} format or answer not string.");
+              }
+          } catch (jsonError) {
+              // Not JSON, aiTextOutput remains the raw text.
+              console.warn("Raw text fallback is not JSON.");
+          }
+      }
+    }
+  } 
+  // If both response.output and response.text are missing or problematic
+  else {
+    const candidateMessage = response.candidates?.[0]?.message;
+    const finishReason = response.candidates?.[0]?.finishReason;
+    if (finishReason && finishReason !== 'STOP' && finishReason !== 'TOOL_CALLS' && candidateMessage) {
+        aiTextOutput = `Error from AI: ${candidateMessage} (Reason: ${finishReason})`;
+    } else if (candidateMessage) {
+        aiTextOutput = `Received an unusual response: ${candidateMessage}`;
+    }
+    else {
+        aiTextOutput = 'Sorry, I received an empty or unparsable response from the AI.';
+    }
+    console.error("AI response output and text are both missing/empty or unparsable. Full response:", JSON.stringify(response, null, 2));
+  }
+
 
   // Process the full response to a simpler structure for the client
   const toolResults = response.toolRequests?.map((toolRequest, index) => {
@@ -278,8 +349,6 @@ export async function getAyurvedicGuidance(input: AyurvedicGuidanceInput): Promi
   }).filter(Boolean) as AyurvedicGuidanceAIFullResponse['toolResults'] || undefined;
 
 
-  // Example of extracting specific data if a tool was called and successful
-  // This part can be expanded based on how you want to structure customData
   let customData: AyurvedicGuidanceAIFullResponse['customData'] = {};
 
   if (toolResults) {
@@ -305,34 +374,14 @@ export async function getAyurvedicGuidance(input: AyurvedicGuidanceInput): Promi
     }
   }
   
-  // Ensure 'text' property exists and is derived from the 'answer' field of the LLM's output
-  // If the LLM response is valid JSON matching AyurvedicGuidanceLLMOutputSchema, response.output should exist.
-  let aiTextOutput = 'Sorry, I could not understand the response.'; // Default error message
-  if (response.output && response.output.answer) {
-    aiTextOutput = response.output.answer;
-  } else if (response.text) { 
-    // Fallback if .output is not structured as expected, but .text is available (might be the wrapped JSON)
-    // Attempt to parse it if it looks like the wrapped JSON
-    try {
-        const parsedText = JSON.parse(response.text.replace(/```json\n?|\n?```/g, ''));
-        if (parsedText.answer) {
-            aiTextOutput = parsedText.answer;
-        }
-    } catch (e) {
-        // If parsing fails, use the raw text or keep the default error.
-        // This might indicate the model still isn't conforming perfectly.
-        aiTextOutput = response.text || aiTextOutput; 
-        console.warn("AI response was not in expected JSON object format, used raw text. Response.text:", response.text);
-    }
-  }
-
-
   return {
     text: aiTextOutput,
-    toolCalls: response.toolRequests?.map(tr => ({ ref: tr.ref, name: tr.name, input: tr.input })), // Map ToolRequestPart to ToolCall like structure
+    toolCalls: response.toolRequests?.map(tr => ({ ref: tr.ref, name: tr.name, input: tr.input })), 
     toolResults: toolResults,
     customData: Object.keys(customData).length > 0 ? customData : undefined,
-    error: response.candidates?.[0]?.finishReason === 'ERROR' ? (response.candidates[0].message || 'Unknown error from AI model') : undefined,
+    error: (response.candidates?.[0]?.finishReason !== 'STOP' && response.candidates?.[0]?.finishReason !== 'TOOL_CALLS') 
+            ? (response.candidates?.[0]?.message || 'Unknown error or non-STOP/TOOL_CALLS finish reason from AI model') 
+            : undefined,
   };
 }
 
