@@ -6,16 +6,18 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Send, User, Sparkles, Loader2, Briefcase, ShoppingBag, ExternalLink, PlusCircle, CalendarClock } from 'lucide-react';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Card, CardContent } from '@/components/ui/card';
+import { Send, User, Sparkles, Loader2, X } from 'lucide-react';
 import type { ChatMessage, Practitioner, Product, AyurvedicGuidanceAIFullResponse } from '@/lib/types';
 import { getAyurvedicGuidance } from '@/ai/flows/ayurvedic-guidance';
 import { format } from 'date-fns';
 import { useToast } from "@/hooks/use-toast";
-import { useCart } from '@/contexts/CartContext'; // For adding products to cart
-import BookAppointmentModal from '@/components/practitioners/BookAppointmentModal'; // For booking
+import { useCart } from '@/contexts/CartContext';
+import BookAppointmentModal from '@/components/practitioners/BookAppointmentModal';
 import PractitionerInfoModal from '../practitioners/PractitionerInfoModal';
+import PractitionerArtifactDisplay from './PractitionerArtifactDisplay';
+import ProductArtifactDisplay from './ProductArtifactDisplay';
 
 
 export default function ChatInterface() {
@@ -26,13 +28,13 @@ export default function ChatInterface() {
   const { toast } = useToast();
   const { addToCart } = useCart();
 
-  // State for modals
   const [selectedPractitionerForBooking, setSelectedPractitionerForBooking] = useState<Practitioner | null>(null);
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
   const [selectedPractitionerForInfo, setSelectedPractitionerForInfo] = useState<Practitioner | null>(null);
   const [isInfoModalOpen, setIsInfoModalOpen] = useState(false);
-  const [initialBookingDate, setInitialBookingDate] = useState<Date | undefined>(undefined);
-  const [initialBookingTime, setInitialBookingTime] = useState<string | undefined>(undefined);
+  
+  const [artifactContent, setArtifactContent] = useState<React.ReactNode | null>(null);
+  const [artifactTitle, setArtifactTitle] = useState<string>("Details");
 
 
   useEffect(() => {
@@ -55,25 +57,12 @@ export default function ChatInterface() {
     ]);
   }, []);
 
-  const handleOpenBookingModal = (practitioner: Practitioner, dateStr?: string, timeStr?: string) => {
-    setSelectedPractitionerForBooking(practitioner);
-    // Basic date/time parsing if provided by AI. For robustness, AI should provide structured date/time.
-    if (dateStr) {
-        // This is a simplistic approach. Robust date parsing would be needed.
-        // For now, we'll assume AI provides a parseable string or we let user pick.
-        // setInitialBookingDate(new Date(dateStr)); 
-    }
-    if (timeStr) {
-        // setInitialBookingTime(timeStr);
-    }
-    setIsBookingModalOpen(true);
-  };
-
-  const handleOpenInfoModal = (practitioner: Practitioner) => {
-    setSelectedPractitionerForInfo(practitioner);
-    setIsInfoModalOpen(true);
-  }
-
+  // These functions are now potentially triggered by PractitionerCard/ProductCard instances
+  // which might be rendered inside PractitionerArtifactDisplay or ProductArtifactDisplay.
+  // PractitionerCard and ProductCard already manage their own modals/actions using context or internal state.
+  // So these specific handlers might not be directly called from the artifact display components
+  // unless those components are simplified to not use cards.
+  // For now, we'll assume PractitionerCard and ProductCard handle their interactions.
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -89,39 +78,41 @@ export default function ChatInterface() {
     const currentInput = input;
     setInput('');
     setIsLoading(true);
+    setArtifactContent(null); // Clear artifact view on new message
 
     try {
-      // The getAyurvedicGuidance function now returns a more complex object
       const aiFullResponse: AyurvedicGuidanceAIFullResponse = await getAyurvedicGuidance({ question: currentInput });
       
       let assistantContent = aiFullResponse.text || 'I received a response, but it was empty.';
-      let practitionersToShow: Practitioner[] | undefined = undefined;
-      let productsToShow: Product[] | undefined = undefined;
+      
+      // Process customData for artifact view
+      if (aiFullResponse.customData?.practitioners && aiFullResponse.customData.practitioners.length > 0) {
+        setArtifactContent(
+          <PractitionerArtifactDisplay practitioners={aiFullResponse.customData.practitioners} />
+        );
+        setArtifactTitle("Practitioners Found");
+      } else if (aiFullResponse.customData?.products && aiFullResponse.customData.products.length > 0) {
+        setArtifactContent(
+          <ProductArtifactDisplay products={aiFullResponse.customData.products} />
+        );
+        setArtifactTitle("Products Found");
+      } else {
+        setArtifactContent(null); // Ensure artifact view is cleared if no relevant data
+      }
 
-      // Check for tool results and process them
+      // Handle cart additions confirmed by AI
       if (aiFullResponse.customData?.productAddedToCartStatus?.success && aiFullResponse.customData.productAddedToCartStatus.product) {
         const { product, quantity } = aiFullResponse.customData.productAddedToCartStatus;
         if (product && quantity) {
-          addToCart(product as Product, quantity); // Cast ProductType to Product
-          // AI's text response should already confirm this, but we could add more here.
+          addToCart(product as Product, quantity);
         }
       }
       
-      if (aiFullResponse.customData?.practitioners) {
-        practitionersToShow = aiFullResponse.customData.practitioners;
-      }
-      if (aiFullResponse.customData?.products) {
-        productsToShow = aiFullResponse.customData.products;
-      }
-
-
       const assistantMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
         content: assistantContent,
         timestamp: new Date(),
-        practitioners: practitionersToShow,
-        products: productsToShow,
         toolCalls: aiFullResponse.toolCalls,
         toolResponses: aiFullResponse.toolResults?.map(tr => tr.result)
       };
@@ -137,6 +128,7 @@ export default function ChatInterface() {
         timestamp: new Date(),
       };
       setMessages((prev) => [...prev, errorMessage]);
+      setArtifactContent(null); // Clear artifact view on error
       toast({
         title: "Error",
         description: "Failed to get response from AI. Please check your connection or try again later.",
@@ -149,136 +141,117 @@ export default function ChatInterface() {
 
   return (
     <>
-      <div className="flex flex-col h-full bg-card rounded-lg shadow-xl overflow-hidden">
-        <ScrollArea className="flex-grow p-4 sm:p-6" ref={scrollAreaRef}>
-          <div className="space-y-6">
-            {messages.map((message) => (
-              <div
-                key={message.id}
-                className={`flex items-end gap-3 ${
-                  message.role === 'user' ? 'justify-end' : 'justify-start'
-                }`}
-              >
-                {message.role === 'assistant' && (
-                  <Avatar className="h-8 w-8 sm:h-10 sm:w-10 shadow-sm self-start">
+      <div className="flex h-full bg-card rounded-lg shadow-xl overflow-hidden">
+        <div className={`flex flex-col h-full transition-all duration-300 ease-in-out ${artifactContent ? 'w-3/5 xl:w-2/3' : 'w-full'}`}>
+          <ScrollArea className="flex-grow p-4 sm:p-6" ref={scrollAreaRef}>
+            <div className="space-y-6">
+              {messages.map((message) => (
+                <div
+                  key={message.id}
+                  className={`flex items-end gap-3 ${
+                    message.role === 'user' ? 'justify-end' : 'justify-start'
+                  }`}
+                >
+                  {message.role === 'assistant' && (
+                    <Avatar className="h-8 w-8 sm:h-10 sm:w-10 shadow-sm self-start">
+                      <AvatarFallback className="bg-primary text-primary-foreground">
+                        <Sparkles size={20} />
+                      </AvatarFallback>
+                    </Avatar>
+                  )}
+                  <Card
+                    className={`max-w-xs sm:max-w-md md:max-w-lg lg:max-w-xl p-3 sm:p-4 rounded-2xl shadow-md animate-in fade-in-0 slide-in-from-bottom-4 duration-300 ${
+                      message.role === 'user'
+                        ? 'bg-accent text-accent-foreground rounded-br-none'
+                        : 'bg-background border-border text-foreground rounded-bl-none'
+                    }`}
+                  >
+                    <CardContent className="p-0 text-sm sm:text-base leading-relaxed">
+                      <p className="whitespace-pre-wrap">{message.content}</p>
+                      <p className={`text-xs mt-2 ${message.role === 'user' ? 'text-accent-foreground/70' : 'text-muted-foreground/70'}`}>
+                        {format(message.timestamp, 'p')}
+                      </p>
+                    </CardContent>
+                  </Card>
+                  {message.role === 'user' && (
+                    <Avatar className="h-8 w-8 sm:h-10 sm:w-10 shadow-sm self-start">
+                      <AvatarFallback className="bg-accent text-accent-foreground">
+                        <User size={20} />
+                      </AvatarFallback>
+                    </Avatar>
+                  )}
+                </div>
+              ))}
+              {isLoading && (
+                <div className="flex items-end gap-3 justify-start">
+                  <Avatar className="h-8 w-8 sm:h-10 sm:w-10 shadow-sm">
                     <AvatarFallback className="bg-primary text-primary-foreground">
                       <Sparkles size={20} />
                     </AvatarFallback>
                   </Avatar>
-                )}
-                <Card
-                  className={`max-w-xs sm:max-w-md md:max-w-lg lg:max-w-xl p-3 sm:p-4 rounded-2xl shadow-md animate-in fade-in-0 slide-in-from-bottom-4 duration-300 ${
-                    message.role === 'user'
-                      ? 'bg-accent text-accent-foreground rounded-br-none'
-                      : 'bg-background border-border text-foreground rounded-bl-none' // Changed AI bubble style for clarity
-                  }`}
-                >
-                  <CardContent className="p-0 text-sm sm:text-base leading-relaxed">
-                    <p className="whitespace-pre-wrap">{message.content}</p>
-                    
-                    {/* Render Practitioners */}
-                    {message.practitioners && message.practitioners.length > 0 && (
-                      <div className="mt-3 space-y-2 border-t border-border/50 pt-3">
-                        <h4 className="text-xs font-semibold text-muted-foreground uppercase">Practitioners Found:</h4>
-                        {message.practitioners.map(p => (
-                          <div key={p.id} className="p-2.5 bg-muted/30 rounded-md shadow-sm">
-                            <p className="font-semibold text-primary">{p.name} <span className="text-xs text-muted-foreground font-normal">- {p.specialization}</span></p>
-                            <p className="text-xs text-foreground/80 mt-0.5">{p.bio.substring(0,70)}...</p>
-                            <div className="flex gap-2 mt-2">
-                              <Button size="sm" variant="outline" onClick={() => handleOpenInfoModal(p)} className="text-xs h-7">
-                                <ExternalLink size={12} className="mr-1.5"/> Info
-                              </Button>
-                              <Button size="sm" onClick={() => handleOpenBookingModal(p)} className="text-xs h-7 bg-primary hover:bg-primary/90">
-                                <CalendarClock size={12} className="mr-1.5"/> Book
-                              </Button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    {/* Render Products */}
-                    {message.products && message.products.length > 0 && (
-                      <div className="mt-3 space-y-2 border-t border-border/50 pt-3">
-                        <h4 className="text-xs font-semibold text-muted-foreground uppercase">Products Found:</h4>
-                        {message.products.map(prod => (
-                          <div key={prod.id} className="p-2.5 bg-muted/30 rounded-md shadow-sm">
-                            <p className="font-semibold text-primary">{prod.name} <span className="text-xs text-muted-foreground font-normal">- ${prod.price.toFixed(2)}</span></p>
-                             <p className="text-xs text-foreground/80 mt-0.5">{prod.description.substring(0,70)}...</p>
-                            <div className="flex gap-2 mt-2">
-                               <Button size="sm" variant="outline" onClick={() => {setInput(`Tell me more about ${prod.name}`); setTimeout(() => document.getElementById('chat-submit-button')?.click(),0);}} className="text-xs h-7">
-                                <ExternalLink size={12} className="mr-1.5"/> Details
-                              </Button>
-                              <Button size="sm" onClick={() => addToCart(prod, 1)} className="text-xs h-7 bg-primary hover:bg-primary/90" disabled={prod.stock === 0}>
-                                <PlusCircle size={12} className="mr-1.5"/> Add to Cart
-                              </Button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-
-                    <p className={`text-xs mt-2 ${message.role === 'user' ? 'text-accent-foreground/70' : 'text-muted-foreground/70'}`}>
-                      {format(message.timestamp, 'p')}
-                    </p>
-                  </CardContent>
-                </Card>
-                {message.role === 'user' && (
-                  <Avatar className="h-8 w-8 sm:h-10 sm:w-10 shadow-sm self-start">
-                    <AvatarFallback className="bg-accent text-accent-foreground">
-                      <User size={20} />
-                    </AvatarFallback>
-                  </Avatar>
-                )}
-              </div>
-            ))}
-            {isLoading && (
-              <div className="flex items-end gap-3 justify-start">
-                <Avatar className="h-8 w-8 sm:h-10 sm:w-10 shadow-sm">
-                  <AvatarFallback className="bg-primary text-primary-foreground">
-                    <Sparkles size={20} />
-                  </AvatarFallback>
-                </Avatar>
-                <Card className="max-w-xs sm:max-w-md p-3 sm:p-4 rounded-2xl shadow-md bg-background border-border text-foreground rounded-bl-none">
-                  <CardContent className="p-0 flex items-center gap-2">
-                    <Loader2 className="h-5 w-5 animate-spin text-primary" />
-                    <span className="text-muted-foreground">Thinking...</span>
-                  </CardContent>
-                </Card>
-              </div>
-            )}
-          </div>
-        </ScrollArea>
-        <form
-          onSubmit={handleSubmit}
-          className="p-4 sm:p-6 border-t bg-card/50 flex items-center gap-2 sm:gap-4"
-        >
-          <Input
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask AyurAid..."
-            className="flex-grow text-base rounded-full px-4 py-3 focus-visible:ring-primary bg-background"
-            disabled={isLoading}
-          />
-          <Button
-            id="chat-submit-button"
-            type="submit"
-            size="icon"
-            className="rounded-full bg-primary hover:bg-primary/90 text-primary-foreground aspect-square w-12 h-12"
-            disabled={isLoading || !input.trim()}
+                  <Card className="max-w-xs sm:max-w-md p-3 sm:p-4 rounded-2xl shadow-md bg-background border-border text-foreground rounded-bl-none">
+                    <CardContent className="p-0 flex items-center gap-2">
+                      <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                      <span className="text-muted-foreground">Thinking...</span>
+                    </CardContent>
+                  </Card>
+                </div>
+              )}
+            </div>
+          </ScrollArea>
+          <form
+            onSubmit={handleSubmit}
+            className="p-4 sm:p-6 border-t bg-card/50 flex items-center gap-2 sm:gap-4"
           >
-            {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send size={20} />}
-            <span className="sr-only">Send message</span>
-          </Button>
-        </form>
+            <Input
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="Ask AyurAid..."
+              className="flex-grow text-base rounded-full px-4 py-3 focus-visible:ring-primary bg-background"
+              disabled={isLoading}
+            />
+            <Button
+              id="chat-submit-button"
+              type="submit"
+              size="icon"
+              className="rounded-full bg-primary hover:bg-primary/90 text-primary-foreground aspect-square w-12 h-12"
+              disabled={isLoading || !input.trim()}
+            >
+              {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send size={20} />}
+              <span className="sr-only">Send message</span>
+            </Button>
+          </form>
+        </div>
+
+        {artifactContent && (
+          <div className="w-2/5 xl:w-1/3 h-full border-l border-border bg-background/30 p-4 flex flex-col shadow-lg">
+            <div className="flex justify-between items-center mb-3 pb-3 border-b border-border">
+              <h3 className="text-lg font-semibold text-primary">{artifactTitle}</h3>
+              <Button variant="ghost" size="icon" onClick={() => setArtifactContent(null)} className="text-muted-foreground hover:text-foreground">
+                <X size={20} />
+                <span className="sr-only">Close details</span>
+              </Button>
+            </div>
+            <ScrollArea className="flex-grow pr-1"> {/* Added pr-1 to prevent scrollbar overlap if content is tight */}
+              {artifactContent}
+            </ScrollArea>
+          </div>
+        )}
       </div>
+
+      {/* Modals are kept here as they are global to the interface actions,
+          PractitionerCard and ProductCard will trigger them via their internal logic or context.
+          If selectedPractitionerForBooking/Info is set by ChatInterface itself based on AI response for booking,
+          this logic would need slight adjustment, but current setup relies on cards to trigger.
+      */}
       {selectedPractitionerForBooking && (
         <BookAppointmentModal
           practitioner={selectedPractitionerForBooking}
           open={isBookingModalOpen}
-          onOpenChange={setIsBookingModalOpen}
-          initialDate={initialBookingDate}
-          initialTime={initialBookingTime}
+          onOpenChange={(isOpen) => {
+            setIsBookingModalOpen(isOpen);
+            if (!isOpen) setSelectedPractitionerForBooking(null);
+          }}
         />
       )}
       {selectedPractitionerForInfo && (
@@ -286,7 +259,10 @@ export default function ChatInterface() {
             practitioner={selectedPractitionerForInfo}
             generatedImageUrl={selectedPractitionerForInfo.imageUrl || `https://randomuser.me/api/portraits/${selectedPractitionerForInfo.gender === 'male' ? 'men' : 'women'}/${parseInt(selectedPractitionerForInfo.id) % 100}.jpg`}
             open={isInfoModalOpen}
-            onOpenChange={setIsInfoModalOpen}
+            onOpenChange={(isOpen) => {
+              setIsInfoModalOpen(isOpen);
+              if(!isOpen) setSelectedPractitionerForInfo(null);
+            }}
         />
       )}
     </>

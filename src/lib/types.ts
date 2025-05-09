@@ -36,27 +36,16 @@ export interface TimeSlot {
   available: boolean;
 }
 
-// Extended ChatMessage type
+// Simplified ChatMessage type
 export interface ChatMessage {
   id: string;
   role: 'user' | 'assistant';
   content: string; // The main textual content
   timestamp: Date;
   isLoading?: boolean; // For AI thinking state
-  // Optional fields for rendering structured data from AI/tool responses
-  practitioners?: Practitioner[];
-  products?: Product[];
-  // Information about tool calls, if the UI needs to react specifically
+  // Tool call information can remain for debugging or advanced UI if needed
   toolCalls?: ToolCall[]; 
   toolResponses?: ToolResponsePart[];
-  // Data for specific actions triggered by chat
-  actionableData?: {
-    type: 'book_appointment';
-    practitioner: Practitioner;
-  } | {
-    type: 'add_to_cart';
-    product: Product;
-  };
 }
 
 
@@ -118,3 +107,4 @@ export interface TreatmentPlanActivity {
   icon: string; // Name of the Lucide icon (e.g., "Coffee", "Sprout")
   status: 'pending' | 'completed' | 'missed'; // For potential tracking
 }
+
