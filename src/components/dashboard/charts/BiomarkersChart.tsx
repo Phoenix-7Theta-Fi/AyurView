@@ -1,107 +1,205 @@
-
 'use client';
 
-import { ResponsiveBullet } from '@nivo/bullet';
-import { useMemo, useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { CheckCircle, AlertTriangle, XCircle, Target, MinusCircle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
 
-// Simplified list of biomarkers for demonstration
+interface BiomarkerDisplayData {
+  id: string;
+  name: string; 
+  unit: string; 
+  currentValue: number;
+  targetValue: number;
+  optimalRange: [number, number]; 
+  acceptableRangeOuter?: [number, number]; 
+  status: 'optimal' | 'warning' | 'critical';
+  statusText: string;
+}
+
 const biomarkerConfig = [
-  { id: 'Glucose (mg/dL)', ranges: [70, 90, 100, 125], target: 95 }, // Low, Optimal Low, Optimal High, High
-  { id: 'Cholesterol (mg/dL)', ranges: [120, 160, 200, 240], target: 180 },
-  { id: 'Blood Pressure (Systolic)', ranges: [90, 110, 120, 140], target: 115 },
-  { id: 'Blood Pressure (Diastolic)', ranges: [60, 70, 80, 90], target: 75 },
-  { id: 'Vitamin D (ng/mL)', ranges: [20, 30, 50, 80], target: 40 },
-  { id: 'Heart Rate (bpm)', ranges: [50, 60, 80, 100], target: 70 },
-  { id: 'BMI', ranges: [18.5, 22, 25, 30], target: 23 }, // Underweight, Healthy, Overweight, Obese
-  { id: 'Sleep Quality (%)', ranges: [60, 75, 85, 100], target: 90 },
+  { name: 'Glucose', unit: 'mg/dL', optimalRange: [90, 100] as [number, number], target: 95, acceptableRangeOuter: [70, 125] as [number, number] },
+  { name: 'Total Cholesterol', unit: 'mg/dL', optimalRange: [160, 200] as [number, number], target: 180, acceptableRangeOuter: [120, 240] as [number, number], lowerIsGenerallyBetter: true },
+  { name: 'Systolic BP', unit: 'mmHg', optimalRange: [110, 120] as [number, number], target: 115, acceptableRangeOuter: [90, 140] as [number, number] },
+  { name: 'Diastolic BP', unit: 'mmHg', optimalRange: [70, 80] as [number, number], target: 75, acceptableRangeOuter: [60, 90] as [number, number] },
+  { name: 'Vitamin D', unit: 'ng/mL', optimalRange: [30, 50] as [number, number], target: 40, acceptableRangeOuter: [20, 80] as [number, number] },
+  { name: 'Resting Heart Rate', unit: 'bpm', optimalRange: [60, 80] as [number, number], target: 70, acceptableRangeOuter: [50, 100] as [number, number] },
+  { name: 'BMI', unit: '', optimalRange: [18.5, 24.9] as [number, number], target: 22, acceptableRangeOuter: [17, 29.9] as [number, number] },
+  { name: 'Sleep Quality Score', unit: '%', optimalRange: [85, 100] as [number, number], target: 90, acceptableRangeOuter: [70, 100] as [number, number], higherIsGenerallyBetter: true },
 ];
 
+const generateBiomarkerDisplayData = (): BiomarkerDisplayData[] => {
+  return biomarkerConfig.map((bm, index) => {
+    let currentValue;
+    const rand = Math.random();
+    // Generate current value relative to optimal and acceptable ranges
+    if (rand < 0.1) { // ~10% critical low
+        currentValue = (bm.acceptableRangeOuter ? bm.acceptableRangeOuter[0] : bm.optimalRange[0]) * (0.7 + Math.random() * 0.2);
+    } else if (rand < 0.2) { // ~10% critical high
+        currentValue = (bm.acceptableRangeOuter ? bm.acceptableRangeOuter[1] : bm.optimalRange[1]) * (1.1 + Math.random() * 0.3);
+    } else if (rand < 0.4) { // ~20% warning low
+        currentValue = bm.optimalRange[0] * (0.85 + Math.random() * 0.14);
+    } else if (rand < 0.6) { // ~20% warning high
+        currentValue = bm.optimalRange[1] * (1.01 + Math.random() * 0.14);
+    } else { // ~40% optimal
+      currentValue = bm.optimalRange[0] + Math.random() * (bm.optimalRange[1] - bm.optimalRange[0]);
+    }
+    
+    currentValue = parseFloat(currentValue.toFixed(bm.unit === 'mg/dL' || bm.unit === 'bpm' || bm.unit === 'mmHg' ? 0 : 1));
+    currentValue = Math.max(0, currentValue); // Ensure non-negative
 
-const generateBiomarkerData = () => {
-  return biomarkerConfig.map(bm => ({
-    id: bm.id,
-    ranges: bm.ranges, // Min, Low-Optimal, Mid-Optimal, Max-Optimal, High (adjust based on actual data needs)
-    measures: [Math.floor(Math.random() * (bm.ranges[3] - bm.ranges[0])) + bm.ranges[0]], // Actual measured value within overall range
-    markers: [bm.target], // Target/Optimal value
-  }));
+    let status: 'optimal' | 'warning' | 'critical' = 'optimal';
+    let statusText = 'Optimal';
+
+    const [optLow, optHigh] = bm.optimalRange;
+    const [accOuterLow, accOuterHigh] = bm.acceptableRangeOuter || [optLow * 0.8, optHigh * 1.2]; // Fallback for acceptable range
+
+    if (currentValue >= optLow && currentValue <= optHigh) {
+      status = 'optimal';
+      statusText = 'Optimal';
+    } else if (currentValue >= accOuterLow && currentValue <= accOuterHigh) {
+      status = 'warning';
+      if (bm.lowerIsGenerallyBetter && currentValue < optLow) {
+        statusText = 'Good (Low)';
+      } else if (bm.higherIsGenerallyBetter && currentValue > optHigh) {
+        statusText = 'Good (High)';
+      } else {
+        statusText = (currentValue < optLow) ? 'Slightly Low' : 'Slightly High';
+      }
+    } else {
+      status = 'critical';
+      statusText = (currentValue < accOuterLow) ? 'Critically Low' : 'Critically High';
+    }
+
+    return {
+      id: `bm-${index}`,
+      name: bm.name,
+      unit: bm.unit,
+      currentValue,
+      targetValue: bm.target,
+      optimalRange: bm.optimalRange,
+      acceptableRangeOuter: bm.acceptableRangeOuter,
+      status,
+      statusText,
+    };
+  });
 };
 
-const commonProperties = {
-  margin: { top: 10, right: 90, bottom: 10, left: 150 }, // Increased left margin for labels
-  layout: 'horizontal' as const,
-  rangeColors: ['#FFD700', '#90EE90', '#FFD700', '#FFA07A'] as any, // Gold, LightGreen (Optimal), Gold, LightSalmon - needs 1 less than ranges.length
-  measureColors: ['#A0522D'] as any, // Accent Brown for actual measure
-  markerColors: ['#4CAF50'] as any, // Primary Green for target marker
-  spacing: 30, // Space between bullet charts
-  titleAlign: 'start' as const,
-  titleOffsetX: -140, // Adjust to align title/biomarker name
-  measureSize: 0.4,
-  markerSize: 0.6,
-  theme: {
-    background: "hsl(var(--card))",
-    textColor: "hsl(var(--card-foreground))", // For titles/labels
-    fontSize: 11,
-    axis: { // Not typically used in bullet, but good to have defaults
-        ticks: { text: { fill: "hsl(var(--muted-foreground))" }},
-        legend: { text: { fill: "hsl(var(--foreground))" }}
-    },
-    tooltip: {
-      container: {
-        background: "hsl(var(--background))",
-        color: "hsl(var(--foreground))",
-        fontSize: 12,
-        borderRadius: "var(--radius)",
-        boxShadow: "0 3px 6px rgba(0,0,0,0.1)",
-      },
-    },
+
+const StatusIndicator = ({ status, statusText }: { status: BiomarkerDisplayData['status'], statusText: string }) => {
+  let IconComponent;
+  let colorClass;
+  let badgeVariant: "default" | "secondary" | "destructive" | "outline" = "default";
+
+
+  switch (status) {
+    case 'optimal':
+      IconComponent = CheckCircle;
+      colorClass = 'text-green-600';
+      badgeVariant = 'default'; // Or a specific "success" variant if defined in theme
+      break;
+    case 'warning':
+      IconComponent = AlertTriangle;
+      colorClass = 'text-yellow-600';
+      badgeVariant = 'secondary'; // Or a specific "warning" variant
+      break;
+    case 'critical':
+      IconComponent = XCircle;
+      colorClass = 'text-red-600';
+      badgeVariant = 'destructive';
+      break;
+    default:
+      IconComponent = MinusCircle;
+      colorClass = 'text-muted-foreground';
+      badgeVariant = 'outline';
   }
+
+  return (
+    <Badge variant={badgeVariant} className={`flex items-center gap-1.5 text-xs sm:text-sm ${colorClass} bg-opacity-10 border-opacity-30`}>
+      <IconComponent size={16} className="flex-shrink-0" />
+      <span>{statusText}</span>
+    </Badge>
+  );
 };
+
 
 export default function BiomarkersChart() {
-  const [data, setData] = useState<any[]>([]);
+  const [data, setData] = useState<BiomarkerDisplayData[]>([]);
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
     setIsClient(true);
-    setData(generateBiomarkerData());
+    setData(generateBiomarkerDisplayData());
   }, []);
 
-  // Calculate dynamic height based on number of biomarkers
-  const chartHeight = data.length * 60 + commonProperties.margin.top + commonProperties.margin.bottom; // 60px per biomarker + margins
-  
   if (!isClient) {
-    // Optional: render a placeholder or loading state
-    return <div style={{ height: '200px', width: '100%' }} className="flex items-center justify-center text-muted-foreground">Loading biomarker data...</div>;
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {Array(6).fill(0).map((_, index) => (
+          <Card key={index} className="animate-pulse">
+            <CardHeader className="pb-2">
+              <div className="h-5 bg-muted rounded w-3/4 mb-1"></div>
+              <div className="h-3 bg-muted rounded w-1/4"></div>
+            </CardHeader>
+            <CardContent className="space-y-2 pt-2">
+              <div className="flex justify-between items-center">
+                <div className="h-4 bg-muted rounded w-1/3"></div>
+                <div className="h-6 bg-muted rounded w-1/4"></div>
+              </div>
+              <div className="flex justify-between items-center">
+                <div className="h-4 bg-muted rounded w-1/3"></div>
+                <div className="h-5 bg-muted rounded w-1/5"></div>
+              </div>
+               <div className="flex justify-between items-center">
+                <div className="h-4 bg-muted rounded w-1/3"></div>
+                <div className="h-5 bg-muted rounded w-1/4"></div>
+              </div>
+              <div className="pt-2 border-t border-muted/50">
+                 <div className="h-6 bg-muted rounded w-1/2"></div>
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    );
   }
 
   return (
-    <div style={{ height: `${chartHeight}px`, width: '100%' }} data-ai-hint="health metrics">
-      <ResponsiveBullet
-        data={data}
-        {...commonProperties}
-        // Custom tooltip to show more details
-        tooltip={({ id, value, color, data: itemData }: any) => (
-          <div
-            style={{
-              padding: '8px 12px',
-              background: 'hsl(var(--background))',
-              color: 'hsl(var(--foreground))',
-              border: '1px solid hsl(var(--border))',
-              borderRadius: 'var(--radius)',
-              boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-            }}
-          >
-            <strong>{id}</strong>
-            <br />
-            Current Value: {value ?? 'N/A'}
-            <br />
-            Target: {itemData?.markers?.[0] ?? 'N/A'}
-            <br />
-            Ranges: {itemData?.ranges?.join(' | ') ?? 'N/A'}
-          </div>
-        )}
-      />
+    <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6" data-ai-hint="health indicators list">
+      {data.map((bm) => (
+        <Card key={bm.id} className="shadow-md hover:shadow-lg transition-shadow duration-200 ease-in-out bg-card">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-md sm:text-lg font-semibold text-primary flex items-center gap-2">
+              <Target size={18} className="text-primary/80" />
+              {bm.name}
+            </CardTitle>
+            {bm.unit && <CardDescription className="text-xs text-muted-foreground mt-0.5">Unit: {bm.unit}</CardDescription>}
+          </CardHeader>
+          <CardContent className="space-y-2.5 text-xs sm:text-sm">
+            <div className="flex justify-between items-baseline py-1.5 border-b border-border/50">
+              <span className="text-muted-foreground">Current:</span>
+              <span className="font-bold text-lg sm:text-xl text-foreground">{bm.currentValue}</span>
+            </div>
+            <div className="flex justify-between items-center py-1">
+              <span className="text-muted-foreground">Target:</span>
+              <Badge variant="secondary" className="text-xs sm:text-sm font-medium">{bm.targetValue}</Badge>
+            </div>
+            <div className="flex justify-between items-center py-1">
+              <span className="text-muted-foreground">Optimal Range:</span>
+              <Badge variant="outline" className="text-xs sm:text-sm">{bm.optimalRange.join(' - ')}</Badge>
+            </div>
+             {bm.acceptableRangeOuter && (
+                <div className="flex justify-between items-center text-xs text-muted-foreground/80 py-0.5">
+                    <span>Acceptable:</span>
+                    <span>{bm.acceptableRangeOuter.join(' - ')}</span>
+                </div>
+            )}
+            <div className="pt-2.5 mt-1 border-t border-border/70 flex justify-center">
+                <StatusIndicator status={bm.status} statusText={bm.statusText} />
+            </div>
+          </CardContent>
+        </Card>
+      ))}
     </div>
   );
 }
-

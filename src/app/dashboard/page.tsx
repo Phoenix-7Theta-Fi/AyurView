@@ -1,4 +1,3 @@
-
 import MedicationAdherenceCalendar from '@/components/dashboard/MedicationAdherenceCalendar';
 import CalendarLegend from '@/components/dashboard/CalendarLegend';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -92,7 +91,7 @@ export default function DashboardPage() {
       <Card className="shadow-lg">
         <CardHeader>
           <CardTitle className="text-xl font-semibold text-primary">Key Biomarkers</CardTitle>
-          <CardDescription>Overview of important health indicators against optimal ranges.</CardDescription>
+          <CardDescription>Current status of key health indicators.</CardDescription>
         </CardHeader>
         <CardContent className="p-2 sm:p-4">
           <BiomarkersChart />
