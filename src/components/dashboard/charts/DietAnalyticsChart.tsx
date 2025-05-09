@@ -2,7 +2,7 @@
 'use client';
 
 import { ResponsiveBar } from '@nivo/bar';
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { format, subDays } from 'date-fns';
 
 // Helper to generate mock data for the last 30 days
@@ -137,8 +137,19 @@ const commonProperties = {
 };
 
 export default function DietAnalyticsChart() {
-  const data = useMemo(() => generateDietData(), []);
+  const [data, setData] = useState<any[]>([]);
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+    setData(generateDietData());
+  }, []);
+
   const keys = ['Protein', 'Carbs', 'Fats', 'Vitamins', 'Minerals'];
+
+  if (!isClient) {
+    return <div className="h-[500px] w-full flex items-center justify-center text-muted-foreground">Loading diet data...</div>;
+  }
 
   return (
     <div className="h-[500px] w-full" data-ai-hint="nutrition chart">

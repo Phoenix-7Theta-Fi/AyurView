@@ -2,7 +2,7 @@
 'use client';
 
 import { ResponsiveLine } from '@nivo/line';
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { format, subDays, addDays } from 'date-fns';
 
 
@@ -155,7 +155,17 @@ const commonProperties = {
 };
 
 export default function CardioChart() {
-  const data = useMemo(() => generateCardioData(), []);
+  const [data, setData] = useState<any[]>([]);
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+    setData(generateCardioData());
+  }, []);
+  
+  if (!isClient) {
+    return <div className="h-96 w-full flex items-center justify-center text-muted-foreground">Loading cardio data...</div>;
+  }
 
   return (
     <div className="h-96 w-full" data-ai-hint="running graph">

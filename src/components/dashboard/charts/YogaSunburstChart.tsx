@@ -2,7 +2,7 @@
 'use client';
 
 import { ResponsiveSunburst } from '@nivo/sunburst';
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 
 const generateYogaData = () => ({
   name: 'Yoga Practices',
@@ -123,7 +123,18 @@ const commonProperties = {
 };
 
 export default function YogaSunburstChart() {
-  const data = useMemo(() => generateYogaData(), []);
+  const [data, setData] = useState<any | null>(null);
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+    setData(generateYogaData());
+  }, []);
+
+  if (!isClient || !data) {
+    return <div className="h-96 w-full flex items-center justify-center text-muted-foreground">Loading yoga data...</div>;
+  }
+
 
   return (
     <div className="h-96 w-full" data-ai-hint="yoga types">

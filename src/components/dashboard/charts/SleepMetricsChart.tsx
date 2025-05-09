@@ -3,7 +3,7 @@
 
 import { ResponsiveBar } from '@nivo/bar';
 import { ResponsiveLine, LineSvgProps, Serie } from '@nivo/line';
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import { format, subDays } from 'date-fns';
 
 // Helper to generate mock data for the last 30 days
@@ -91,7 +91,15 @@ const nivoTheme = {
 
 
 export default function SleepMetricsChart() {
-  const { barData, lineData } = useMemo(() => generateSleepData(), []);
+  const [chartData, setChartData] = useState<{ barData: any[], lineData: Serie[] }>({ barData: [], lineData: [] });
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+    setChartData(generateSleepData());
+  }, []);
+
+  const { barData, lineData } = chartData;
   const barKeys = ['REM', 'Deep', 'Light', 'Awake'];
   
   const barChartProps = {
@@ -221,6 +229,10 @@ export default function SleepMetricsChart() {
         },
       ],
   };
+  
+  if (!isClient) {
+    return <div className="h-[500px] w-full relative flex items-center justify-center text-muted-foreground">Loading sleep data...</div>;
+  }
 
   return (
     <div className="h-[500px] w-full relative" data-ai-hint="sleep stress chart">

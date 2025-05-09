@@ -2,7 +2,7 @@
 'use client';
 
 import { ResponsiveBullet } from '@nivo/bullet';
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 
 // Simplified list of biomarkers for demonstration
 const biomarkerConfig = [
@@ -58,10 +58,21 @@ const commonProperties = {
 };
 
 export default function BiomarkersChart() {
-  const data = useMemo(() => generateBiomarkerData(), []);
+  const [data, setData] = useState<any[]>([]);
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+    setData(generateBiomarkerData());
+  }, []);
 
   // Calculate dynamic height based on number of biomarkers
   const chartHeight = data.length * 60 + commonProperties.margin.top + commonProperties.margin.bottom; // 60px per biomarker + margins
+  
+  if (!isClient) {
+    // Optional: render a placeholder or loading state
+    return <div style={{ height: '200px', width: '100%' }} className="flex items-center justify-center text-muted-foreground">Loading biomarker data...</div>;
+  }
 
   return (
     <div style={{ height: `${chartHeight}px`, width: '100%' }} data-ai-hint="health metrics">

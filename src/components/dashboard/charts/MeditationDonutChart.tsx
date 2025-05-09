@@ -2,7 +2,7 @@
 'use client';
 
 import { ResponsivePie } from '@nivo/pie';
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 
 const generateMeditationData = () => [
   {
@@ -130,7 +130,17 @@ const commonProperties = {
 };
 
 export default function MeditationDonutChart() {
-  const data = useMemo(() => generateMeditationData(), []);
+  const [data, setData] = useState<any[]>([]);
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+    setData(generateMeditationData());
+  }, []);
+
+  if (!isClient) {
+    return <div className="h-96 w-full flex items-center justify-center text-muted-foreground">Loading meditation data...</div>;
+  }
 
   return (
     <div className="h-96 w-full" data-ai-hint="meditation practice chart">

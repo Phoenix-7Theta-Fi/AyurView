@@ -2,7 +2,7 @@
 'use client';
 
 import { ResponsiveRadialBar } from '@nivo/radial-bar';
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 
 const generateWorkoutData = () => [
   {
@@ -108,7 +108,18 @@ const commonProperties = {
 };
 
 export default function WorkoutRadialChart() {
-  const data = useMemo(() => generateWorkoutData(), []);
+  const [data, setData] = useState<any[]>([]);
+  const [isClient, setIsClient] = useState(false);
+
+  useEffect(() => {
+    setIsClient(true);
+    setData(generateWorkoutData());
+  }, []);
+
+  if (!isClient) {
+    return <div className="h-96 w-full flex items-center justify-center text-muted-foreground">Loading workout data...</div>;
+  }
+
 
   return (
     <div className="h-96 w-full" data-ai-hint="fitness score">

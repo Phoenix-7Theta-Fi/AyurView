@@ -1,6 +1,7 @@
+
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Calendar } from '@/components/ui/calendar';
 import type { MedicationAdherenceData } from '@/lib/types';
 import { addDays, format, startOfMonth } from 'date-fns';
@@ -12,7 +13,6 @@ const generateMockData = (): MedicationAdherenceData[] => {
   const today = new Date();
   const startDate = startOfMonth(today); // Start from the beginning of the current month
   const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
-
 
   for (let i = 0; i < daysInMonth; i++) {
     const currentDate = addDays(startDate, i);
@@ -26,9 +26,6 @@ const generateMockData = (): MedicationAdherenceData[] => {
   return data;
 };
 
-
-const mockAdherenceData: MedicationAdherenceData[] = generateMockData();
-
 const getAdherenceColorClass = (adherence: number | undefined): string => {
   if (adherence === undefined) return 'bg-muted/30'; // Day with no data or future day
 
@@ -41,10 +38,41 @@ const getAdherenceColorClass = (adherence: number | undefined): string => {
 
 export default function MedicationAdherenceCalendar() {
   const [currentMonth, setCurrentMonth] = useState(new Date());
+  const [adherenceMap, setAdherenceMap] = useState<Map<string, number>>(new Map());
+  const [isClient, setIsClient] = useState(false);
 
-  const adherenceMap = new Map(
-    mockAdherenceData.map((item) => [format(item.date, 'yyyy-MM-dd'), item.adherence])
-  );
+  useEffect(() => {
+    setIsClient(true);
+    const mockData = generateMockData();
+    const newAdherenceMap = new Map(
+      mockData.map((item) => [format(item.date, 'yyyy-MM-dd'), item.adherence])
+    );
+    setAdherenceMap(newAdherenceMap);
+  }, []);
+
+
+  if (!isClient) {
+    // Render a placeholder or loading state until client-side hydration
+    return (
+      <div className="bg-card p-4 sm:p-6 rounded-lg shadow-md border border-border w-full max-w-md mx-auto">
+        <Calendar
+          mode="single"
+          month={currentMonth}
+          onMonthChange={setCurrentMonth}
+          className="p-0 w-full"
+           classNames={{
+            day: 'h-10 w-10 text-sm rounded-md',
+            day_today: 'bg-accent text-accent-foreground ring-2 ring-accent ring-offset-2 ring-offset-background',
+          }}
+          components={{
+            DayContent: ({ date, displayMonth }) => (
+                 <div className="h-full w-full flex items-center justify-center rounded-md bg-muted/10 text-muted-foreground/50">{date.getDate()}</div>
+            )
+          }}
+        />
+      </div>
+    );
+  }
 
   return (
     <TooltipProvider delayDuration={100}>
@@ -91,3 +119,4 @@ export default function MedicationAdherenceCalendar() {
     </TooltipProvider>
   );
 }
+
