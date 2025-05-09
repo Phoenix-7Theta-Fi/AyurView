@@ -231,13 +231,14 @@ User's question: {{question}}
 Follow these guidelines:
 - If the user asks for general Ayurvedic advice, provide it in the 'answer' field of the JSON response.
 - If the user is looking for a practitioner:
-  - Use 'findPractitioners' tool. Present the found practitioners clearly in the 'answer' field.
+  - Use 'findPractitioners' tool. Your textual 'answer' should then introduce the practitioners that were found by the tool (e.g., "Here are some practitioners I found:"). The UI will display the practitioner details separately.
   - If they want to book, ask for the practitioner's ID (if multiple were found and not specified), preferred date, and time in the 'answer' field.
   - Use 'getPractitionerAvailability' if needed to confirm slots for a specific practitioner. The result should inform your 'answer'.
   - Once all details are gathered (Practitioner ID, Date, Time, Mode - default to 'online' if not specified), use 'bookAppointment' tool to confirm. The booking confirmation should be in the 'answer' field.
 - If the user is looking for products (e.g., "show products", for a health concern, or a specific product type):
-  - Use 'findProducts' tool. If the user provides a specific query (like "for stress" or "turmeric"), pass it to the tool. If they ask generally (like "show me some products" or "what products do you have?"), you can call the tool without a specific query string to get general recommendations.
-  - Present the found products in the 'answer' field.
+  - If the user provides a specific query (like "for stress" or "turmeric"), pass it to the 'findProducts' tool.
+  - If they ask generally (like "show me some products", "what products do you have?", "products"), you **must** call the 'findProducts' tool. You can pass an empty or very generic query if appropriate (e.g., query: "general wellness products" or no query parameter at all if the tool handles it for broad results) to get general recommendations.
+  - Your textual 'answer' should then introduce the products that were found by the tool (e.g., "Here are some products I found:"). The UI will display the product details separately.
 - If they want to add a product to the cart, ask for the product ID (if multiple were found) and quantity in the 'answer' field.
   - Use 'addProductToCartClientProxy' tool. The client application will handle the actual cart update. Inform the user that the item will be added and they can see it in their cart in the 'answer' field.
 - For multi-turn interactions (like booking or choosing a product), guide the user step-by-step via the 'answer' field.
@@ -253,12 +254,25 @@ If no tool is used, your direct advice or question to the user should be in the 
 `,
 });
 
+// Flow that calls the prompt and returns the full GenerateResponse.
+const ayurvedicGuidanceFlow = ai.defineFlow(
+  {
+    name: 'ayurvedicGuidanceFlow',
+    inputSchema: AyurvedicGuidanceInputSchema,
+    outputSchema: z.any(), // Output is the raw GenerateResponse
+  },
+  async (input) => {
+    const llmResponse = await ayurvedicGuidancePrompt(input);
+    return llmResponse; // Return the full GenerateResponse
+  }
+);
+
 
 // Wrapper function for client-side usage.
-// It calls the prompt directly and processes the full GenerateResponse.
+// It's typed to return a simplified version of GenerateResponse structure for client convenience.
 export async function getAyurvedicGuidance(input: AyurvedicGuidanceInput): Promise<AyurvedicGuidanceAIFullResponse> {
-  // Call the prompt directly to get the full GenerateResponse object
-  const response: GenerateResponse<AyurvedicGuidanceInternalOutput | null> = await ayurvedicGuidancePrompt(input);
+  // Call the flow, which now returns the full GenerateResponse
+  const response = await ayurvedicGuidanceFlow(input) as GenerateResponse<AyurvedicGuidanceInternalOutput | null>;
 
   let aiTextOutput: string;
   
