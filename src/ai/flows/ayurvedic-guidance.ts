@@ -141,22 +141,29 @@ const bookAppointmentTool = ai.defineTool(
 const findProductsTool = ai.defineTool(
   {
     name: 'findProducts',
-    description: 'Finds Ayurvedic products based on health concerns, category, or keywords. Use this if the user is looking for remedies, supplements, or wellness items.',
+    description: 'Finds Ayurvedic products based on health concerns, category, or keywords. Use this if the user is looking for remedies, supplements, or wellness items. If the user asks generally for products, this tool can provide a general selection.',
     inputSchema: z.object({
-      query: z.string().describe('The user query for products (e.g., "for stress", "immunity booster", "triphala").'),
+      query: z.string().optional().describe('The user query for products (e.g., "for stress", "immunity booster", "triphala"). If omitted, a general selection of products will be considered.'),
       category: z.string().optional().describe('The product category (e.g., "Supplements", "Herbal Powders").'),
     }),
     outputSchema: ProductArraySchema,
   },
   async (input) => {
     let filteredProducts = mockProducts;
-    const queryLower = input.query.toLowerCase();
+    const queryLower = input.query?.toLowerCase();
 
-    filteredProducts = filteredProducts.filter(p =>
-      p.name.toLowerCase().includes(queryLower) ||
-      p.description.toLowerCase().includes(queryLower) ||
-      (input.category && p.category.toLowerCase().includes(input.category.toLowerCase()))
-    );
+    if (queryLower) {
+      filteredProducts = filteredProducts.filter(p =>
+        p.name.toLowerCase().includes(queryLower) ||
+        p.description.toLowerCase().includes(queryLower) ||
+        (input.category && p.category.toLowerCase().includes(input.category.toLowerCase()))
+      );
+    } else if (input.category) {
+      // If no query, but category is provided, filter by category
+      filteredProducts = filteredProducts.filter(p => p.category.toLowerCase().includes(input.category!.toLowerCase()));
+    }
+    // If neither query nor category is provided, all products (mockProducts) are considered initially.
+    
     return filteredProducts.filter(p => p.stock > 0).slice(0, 3); // Return a limited number, in stock
   }
 );
@@ -228,16 +235,17 @@ Follow these guidelines:
   - If they want to book, ask for the practitioner's ID (if multiple were found and not specified), preferred date, and time in the 'answer' field.
   - Use 'getPractitionerAvailability' if needed to confirm slots for a specific practitioner. The result should inform your 'answer'.
   - Once all details are gathered (Practitioner ID, Date, Time, Mode - default to 'online' if not specified), use 'bookAppointment' tool to confirm. The booking confirmation should be in the 'answer' field.
-- If the user is looking for products (e.g., for a health concern, or a specific product type):
-  - Use 'findProducts' tool. Present the found products in the 'answer' field.
-  - If they want to add a product to the cart, ask for the product ID (if multiple were found) and quantity in the 'answer' field.
+- If the user is looking for products (e.g., "show products", for a health concern, or a specific product type):
+  - Use 'findProducts' tool. If the user provides a specific query (like "for stress" or "turmeric"), pass it to the tool. If they ask generally (like "show me some products" or "what products do you have?"), you can call the tool without a specific query string to get general recommendations.
+  - Present the found products in the 'answer' field.
+- If they want to add a product to the cart, ask for the product ID (if multiple were found) and quantity in the 'answer' field.
   - Use 'addProductToCartClientProxy' tool. The client application will handle the actual cart update. Inform the user that the item will be added and they can see it in their cart in the 'answer' field.
 - For multi-turn interactions (like booking or choosing a product), guide the user step-by-step via the 'answer' field.
 - When a tool is used, summarize its result in your textual 'answer'. For example, if practitioners are found, list their names. If a booking is made, confirm it. If a product is to be added to cart, confirm that action.
 - Be conversational and helpful in the 'answer' field.
 
 IMPORTANT: Your entire response MUST be a single JSON object that strictly adheres to the output schema.
-Do NOT include any text, explanations, or Markdown formatting (like \`\`\`json ... \`\`\`) around the JSON object.
+Do NOT include any text, explanations, or Markdown formatting (like \`\`\`json ... \`\`\` around the JSON object.
 The JSON object must have a single key: "answer", which contains your textual response.
 Example: {"answer": "Here is some advice..."}
 If you use a tool, the tool's output should inform the content of the "answer" field.
@@ -245,26 +253,6 @@ If no tool is used, your direct advice or question to the user should be in the 
 `,
 });
 
-
-// The flow returns the full GenerateResponse object from the prompt
-// This flow's outputSchema was mismatched with its actual return type, causing validation errors.
-// For now, we will have getAyurvedicGuidance call the prompt directly.
-// This flow definition can be revised or removed if not used elsewhere.
-/*
-const ayurvedicGuidanceFlow = ai.defineFlow(
-  {
-    name: 'ayurvedicGuidanceFlow',
-    inputSchema: AyurvedicGuidanceInputSchema,
-    // The flow's defined output schema should match what it actually returns.
-    // If it's returning a GenerateResponse, this schema is incorrect.
-    outputSchema: AyurvedicGuidanceLLMOutputSchema, 
-  },
-  async (input): Promise<GenerateResponse<AyurvedicGuidanceInternalOutput>> => {
-    const genResponse = await ayurvedicGuidancePrompt(input);
-    return genResponse;
-  }
-);
-*/
 
 // Wrapper function for client-side usage.
 // It calls the prompt directly and processes the full GenerateResponse.
@@ -384,4 +372,3 @@ export async function getAyurvedicGuidance(input: AyurvedicGuidanceInput): Promi
             : undefined,
   };
 }
-
