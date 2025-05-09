@@ -4,17 +4,11 @@
 ## Core Features:
 
 ### 1. AI Chatbot (`/chatbot`)
--   **AI-Powered Guidance**: Offers personalized Ayurvedic and alternative medicine advice.
--   **Tool Integration**:
-    -   Finds Ayurvedic practitioners based on user queries.
-    -   Retrieves practitioner availability.
-    -   Facilitates booking appointments with practitioners.
-    -   Recommends Ayurvedic products based on user needs.
-    -   Assists in adding products to the shopping cart (client-side proxy).
+-   **AI-Powered Guidance**: Offers personalized Ayurvedic and alternative medicine advice based on user questions.
 -   **Intuitive Chat Interface**:
     -   Displays user and AI messages in a clear, conversational format.
     -   Shows loading indicators during AI processing.
-    -   **Artifact View**: Dynamically renders UI components (Practitioner Cards, Product Cards) on the side of the chat interface for enhanced interaction when the AI provides relevant structured data.
+    -   Provides general Ayurvedic information and wellness tips.
 
 ### 2. Health Analytics Dashboard (`/dashboard`)
 -   **Medication Adherence Calendar**:

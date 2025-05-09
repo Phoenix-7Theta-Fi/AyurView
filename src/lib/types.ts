@@ -43,9 +43,6 @@ export interface ChatMessage {
   content: string; // The main textual content
   timestamp: Date;
   isLoading?: boolean; // For AI thinking state
-  // Tool call information can remain for debugging or advanced UI if needed
-  toolCalls?: ToolCall[]; 
-  toolResponses?: ToolResponsePart[];
 }
 
 
@@ -55,19 +52,9 @@ export interface MedicationAdherenceData {
 }
 
 
-// Wrapper type for the entire AI response from getAyurvedicGuidance
-// This mirrors parts of Genkit's GenerateResponse structure
+// Wrapper type for the AI response from getAyurvedicGuidance
 export interface AyurvedicGuidanceAIFullResponse {
-  text?: string | null; // The primary textual answer from the LLM
-  toolCalls?: ToolCall[];
-  toolResults?: { call: ToolCall; result: ToolResponsePart }[]; // Simplified structure for tool results
-  // custom fields if needed
-  customData?: {
-    practitioners?: Practitioner[];
-    products?: Product[];
-    appointmentBookingStatus?: { success: boolean; message: string; details?: any };
-    productAddedToCartStatus?: { success: boolean; message: string; product?: Product; quantity?: number };
-  };
+  text: string | null; // The primary textual answer from the LLM
   error?: string; // If an error occurred
 }
 
@@ -107,4 +94,3 @@ export interface TreatmentPlanActivity {
   icon: string; // Name of the Lucide icon (e.g., "Coffee", "Sprout")
   status: 'pending' | 'completed' | 'missed'; // For potential tracking
 }
-
