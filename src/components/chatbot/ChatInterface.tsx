@@ -9,8 +9,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Card, CardContent } from '@/components/ui/card';
 import { Send, User, Sparkles, Loader2 } from 'lucide-react';
-import type { ChatMessage, AyurvedicGuidanceAIFullResponse } from '@/lib/types';
-import { getAyurvedicGuidance } from '@/ai/flows/ayurvedic-guidance';
+import type { ChatMessage } from '@/lib/types';
 import { format } from 'date-fns';
 import { useToast } from "@/hooks/use-toast";
 
@@ -57,16 +56,25 @@ export default function ChatInterface() {
     setIsLoading(true);
 
     try {
-      const aiFullResponse: AyurvedicGuidanceAIFullResponse = await getAyurvedicGuidance({ question: currentInput });
+      // Updated API endpoint from '/api/ayurvedic-guidance' to '/api/chatbot'
+      const response = await fetch('/api/chatbot', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ question: currentInput }),
+      });
       
-      let assistantContent = aiFullResponse.text || 'I received a response, but it was empty.';
+      const data = await response.json();
       
-      if (aiFullResponse.error) {
-        assistantContent = `Sorry, I encountered an error: ${aiFullResponse.error}. Please try again.`;
+      let assistantContent = data.text || 'I received a response, but it was empty.';
+      
+      if (data.error) {
+        assistantContent = `Sorry, I encountered an error: ${data.error}. Please try again.`;
         toast({
-            title: "AI Error",
-            description: aiFullResponse.error,
-            variant: "destructive",
+          title: "AI Error",
+          description: data.error,
+          variant: "destructive",
         });
       }
       
@@ -79,7 +87,7 @@ export default function ChatInterface() {
       setMessages((prev) => [...prev, assistantMessage]);
 
     } catch (error) {
-      console.error('Error getting AI guidance:', error);
+      console.error('Error getting chatbot response:', error);
       const errorMessageContent = error instanceof Error ? error.message : 'An unknown error occurred.';
       const errorMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),

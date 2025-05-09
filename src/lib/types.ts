@@ -1,6 +1,4 @@
 
-import type { ToolCall, ToolRequestPart, ToolResponsePart } from "genkit"; // Ensure genkit types are available
-import type { GenerateResponse } from "genkit/generate";
 import type { LucideIcon } from "lucide-react";
 
 export interface Practitioner {
@@ -51,10 +49,9 @@ export interface MedicationAdherenceData {
   adherence: number; // 0 to 1, representing percentage
 }
 
-
 // Wrapper type for the AI response from getAyurvedicGuidance
 export interface AyurvedicGuidanceAIFullResponse {
-  text: string | null; // The primary textual answer from the LLM
+  text: string | null; // The primary textual answer
   error?: string; // If an error occurred
 }
 
