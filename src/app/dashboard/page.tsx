@@ -91,9 +91,9 @@ export default function DashboardPage() {
       <Card className="shadow-lg">
         <CardHeader>
           <CardTitle className="text-xl font-semibold text-primary">Key Biomarkers</CardTitle>
-          <CardDescription>Current status of key health indicators.</CardDescription>
+          <CardDescription>Current status of key health indicators. Scroll to view all.</CardDescription>
         </CardHeader>
-        <CardContent className="p-2 sm:p-4">
+        <CardContent className="p-2 sm:p-4 max-h-[600px] overflow-y-auto">
           <BiomarkersChart />
         </CardContent>
       </Card>
