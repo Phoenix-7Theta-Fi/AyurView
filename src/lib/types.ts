@@ -28,3 +28,18 @@ export interface TimeSlot {
   time: string;
   available: boolean;
 }
+
+export interface Product {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  imageUrl: string;
+  dataAiHint?: string;
+  category: string;
+  stock: number; // Added stock for basic inventory check
+}
+
+export interface CartItem extends Product {
+  quantity: number;
+}
