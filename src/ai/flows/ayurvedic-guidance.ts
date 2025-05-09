@@ -216,7 +216,6 @@ const ayurvedicGuidancePrompt = ai.definePrompt({
     bookAppointmentTool,
     findProductsTool,
     addProductToCartClientProxyTool,
-    // getAyurvedicResource (original tool, can be kept if general queries are still handled)
   ],
   prompt: `You are AyurAid, an AI expert in Ayurvedic medicine, wellness, and holistic health.
 You can provide information, find practitioners, help book appointments, recommend products, and assist with adding products to the cart.
@@ -224,19 +223,26 @@ You can provide information, find practitioners, help book appointments, recomme
 User's question: {{question}}
 
 Follow these guidelines:
-- If the user asks for general Ayurvedic advice, provide it.
+- If the user asks for general Ayurvedic advice, provide it in the 'answer' field of the JSON response.
 - If the user is looking for a practitioner:
-  - Use 'findPractitioners' tool. Present the found practitioners clearly.
-  - If they want to book, ask for the practitioner's ID (if multiple were found and not specified), preferred date, and time.
-  - Use 'getPractitionerAvailability' if needed to confirm slots for a specific practitioner.
-  - Once all details are gathered (Practitioner ID, Date, Time, Mode - default to 'online' if not specified), use 'bookAppointment' tool to confirm.
+  - Use 'findPractitioners' tool. Present the found practitioners clearly in the 'answer' field.
+  - If they want to book, ask for the practitioner's ID (if multiple were found and not specified), preferred date, and time in the 'answer' field.
+  - Use 'getPractitionerAvailability' if needed to confirm slots for a specific practitioner. The result should inform your 'answer'.
+  - Once all details are gathered (Practitioner ID, Date, Time, Mode - default to 'online' if not specified), use 'bookAppointment' tool to confirm. The booking confirmation should be in the 'answer' field.
 - If the user is looking for products (e.g., for a health concern, or a specific product type):
-  - Use 'findProducts' tool. Present the found products.
-  - If they want to add a product to the cart, ask for the product ID (if multiple were found) and quantity.
-  - Use 'addProductToCartClientProxy' tool. The client application will handle the actual cart update. Inform the user that the item will be added and they can see it in their cart.
-- For multi-turn interactions (like booking or choosing a product), guide the user step-by-step.
-- When a tool is used, summarize its result in your textual answer. For example, if practitioners are found, list their names. If a booking is made, confirm it. If a product is to be added to cart, confirm that action.
-- Be conversational and helpful.
+  - Use 'findProducts' tool. Present the found products in the 'answer' field.
+  - If they want to add a product to the cart, ask for the product ID (if multiple were found) and quantity in the 'answer' field.
+  - Use 'addProductToCartClientProxy' tool. The client application will handle the actual cart update. Inform the user that the item will be added and they can see it in their cart in the 'answer' field.
+- For multi-turn interactions (like booking or choosing a product), guide the user step-by-step via the 'answer' field.
+- When a tool is used, summarize its result in your textual 'answer'. For example, if practitioners are found, list their names. If a booking is made, confirm it. If a product is to be added to cart, confirm that action.
+- Be conversational and helpful in the 'answer' field.
+
+IMPORTANT: Your entire response MUST be a single JSON object that strictly adheres to the output schema.
+Do NOT include any text, explanations, or Markdown formatting (like \`\`\`json ... \`\`\`) around the JSON object.
+The JSON object must have a single key: "answer", which contains your textual response.
+Example: {"answer": "Here is some advice..."}
+If you use a tool, the tool's output should inform the content of the "answer" field.
+If no tool is used, your direct advice or question to the user should be in the "answer" field.
 `,
 });
 
@@ -299,11 +305,34 @@ export async function getAyurvedicGuidance(input: AyurvedicGuidanceInput): Promi
     }
   }
   
+  // Ensure 'text' property exists and is derived from the 'answer' field of the LLM's output
+  // If the LLM response is valid JSON matching AyurvedicGuidanceLLMOutputSchema, response.output should exist.
+  let aiTextOutput = 'Sorry, I could not understand the response.'; // Default error message
+  if (response.output && response.output.answer) {
+    aiTextOutput = response.output.answer;
+  } else if (response.text) { 
+    // Fallback if .output is not structured as expected, but .text is available (might be the wrapped JSON)
+    // Attempt to parse it if it looks like the wrapped JSON
+    try {
+        const parsedText = JSON.parse(response.text.replace(/```json\n?|\n?```/g, ''));
+        if (parsedText.answer) {
+            aiTextOutput = parsedText.answer;
+        }
+    } catch (e) {
+        // If parsing fails, use the raw text or keep the default error.
+        // This might indicate the model still isn't conforming perfectly.
+        aiTextOutput = response.text || aiTextOutput; 
+        console.warn("AI response was not in expected JSON object format, used raw text. Response.text:", response.text);
+    }
+  }
+
+
   return {
-    text: response.text,
+    text: aiTextOutput,
     toolCalls: response.toolRequests?.map(tr => ({ ref: tr.ref, name: tr.name, input: tr.input })), // Map ToolRequestPart to ToolCall like structure
     toolResults: toolResults,
     customData: Object.keys(customData).length > 0 ? customData : undefined,
-    error: response.candidates?.[0]?.finishReason === 'ERROR' ? response.candidates[0].message : undefined,
+    error: response.candidates?.[0]?.finishReason === 'ERROR' ? (response.candidates[0].message || 'Unknown error from AI model') : undefined,
   };
 }
+
