@@ -1,6 +1,6 @@
 
 import type { Practitioner, Product, TimeSlot, Milestone, ConcerningBiomarker, UpcomingConsultation, TreatmentPlanActivity } from '@/lib/types';
-import { Pill, Zap, Yoga, Apple, Brain, Coffee, Dumbbell, CheckCircle, XCircle, AlertCircle, ListChecks, Activity } from 'lucide-react';
+import { Pill, Zap, Sprout, Apple, Brain, Coffee, Dumbbell, CheckCircle, XCircle, AlertCircle, ListChecks, Activity } from 'lucide-react';
 
 
 export const mockPractitioners: Practitioner[] = [
@@ -210,7 +210,7 @@ export const mockDailySchedule: TreatmentPlanActivity[] = [
     id: 'act2', time: "07:00 AM", title: "Gentle Yoga & Pranayama", category: "Wellness",
     description: "30 minutes of Vata-pacifying yoga and breathing exercises.",
     details: "Focus on slow, grounding yoga asanas like Pawanmuktasana, Marjaryasana-Bitilasana, and Balasana. Follow with Nadi Shodhana (Alternate Nostril Breathing) for 10 minutes to calm the nervous system. Find a quiet space and use a comfortable mat.",
-    icon: Yoga, status: 'pending'
+    icon: Sprout, status: 'pending'
   },
   {
     id: 'act3', time: "08:00 AM", title: "Ayurvedic Breakfast", category: "Nutrition",
@@ -261,3 +261,4 @@ export const mockDailySchedule: TreatmentPlanActivity[] = [
     icon: CheckCircle, status: 'pending'
   }
 ];
+
