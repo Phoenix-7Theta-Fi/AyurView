@@ -3,9 +3,9 @@ import ProblemOverviewCard from '@/components/treatment-plan/ProblemOverviewCard
 import BiomarkersConcernCard from '@/components/treatment-plan/BiomarkersConcernCard';
 import AssignedPractitionerInfoCard from '@/components/treatment-plan/AssignedPractitionerInfoCard';
 import UpcomingConsultationsList from '@/components/treatment-plan/UpcomingConsultationsList';
-import DailyScheduleView from '@/components/treatment-plan/DailyScheduleView';
+// import DailyScheduleView from '@/components/treatment-plan/DailyScheduleView'; // Removed
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { mockProblemOverview, mockMilestones, mockConcerningBiomarkers, mockAssignedPractitioner, mockUpcomingConsultations, mockDailySchedule } from '@/lib/mockData';
+import { mockProblemOverview, mockMilestones, mockConcerningBiomarkers, mockAssignedPractitioner, mockUpcomingConsultations } from '@/lib/mockData'; // mockDailySchedule removed
 import MilestonesTracker from '@/components/treatment-plan/MilestonesTracker';
 
 export default function TreatmentPlanPage() {
@@ -33,6 +33,8 @@ export default function TreatmentPlanPage() {
 
       <BiomarkersConcernCard biomarkers={mockConcerningBiomarkers} />
       
+      {/* DailyScheduleView removed from here */}
+      {/* 
       <Card className="shadow-lg">
         <CardHeader>
           <CardTitle className="text-2xl font-semibold text-primary">Daily Wellness Schedule</CardTitle>
@@ -41,7 +43,9 @@ export default function TreatmentPlanPage() {
           <DailyScheduleView activities={mockDailySchedule} />
         </CardContent>
       </Card>
+      */}
 
     </div>
   );
 }
+

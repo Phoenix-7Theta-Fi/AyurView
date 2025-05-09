@@ -3,7 +3,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Bot, LayoutDashboard, Leaf, Users, ShoppingCart as ShoppingCartLucideIcon, ClipboardList } from 'lucide-react';
+import { Bot, LayoutDashboard, Leaf, Users, ShoppingCart as ShoppingCartLucideIcon, ClipboardList, CalendarCheck } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import ShoppingCartIcon from '@/components/shop/ShoppingCartIcon';
@@ -13,6 +13,7 @@ const navItems = [
   { href: '/chatbot', label: 'Chatbot', icon: Bot },
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { href: '/treatment-plan', label: 'Treatment Plan', icon: ClipboardList },
+  { href: '/schedule', label: 'Schedule', icon: CalendarCheck },
   { href: '/practitioners', label: 'Practitioners', icon: Users },
   { href: '/shop', label: 'Shop', icon: ShoppingCartLucideIcon },
 ];
@@ -55,3 +56,4 @@ export default function Header() {
     </>
   );
 }
+
