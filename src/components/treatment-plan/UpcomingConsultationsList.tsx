@@ -3,15 +3,13 @@
 
 import type { UpcomingConsultation } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { CalendarDays, UserMd, Video, Building } from 'lucide-react'; // UserMd is a placeholder, consider an alternative if not available
+import { CalendarDays, User, Video, Building } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { format } from 'date-fns';
 
 interface UpcomingConsultationsListProps {
   consultations: UpcomingConsultation[];
 }
-
-const PlaceholderUserMd = UserMd || CalendarDays; // Fallback if UserMd is not a valid Lucide icon
 
 export default function UpcomingConsultationsList({ consultations }: UpcomingConsultationsListProps) {
   return (
@@ -24,9 +22,12 @@ export default function UpcomingConsultationsList({ consultations }: UpcomingCon
           consultations.map(consultation => (
             <div key={consultation.id} className="p-3 bg-muted/30 rounded-md shadow-sm border border-border/50">
               <div className="flex justify-between items-start">
-                <div>
-                  <h4 className="font-medium text-foreground">{consultation.practitionerName}</h4>
-                  <p className="text-xs text-muted-foreground">{consultation.specialization}</p>
+                <div className="flex items-center gap-2">
+                  <User size={16} className="text-primary flex-shrink-0" />
+                  <div>
+                    <h4 className="font-medium text-foreground">{consultation.practitionerName}</h4>
+                    <p className="text-xs text-muted-foreground">{consultation.specialization}</p>
+                  </div>
                 </div>
                 <Badge variant={consultation.mode === 'online' ? 'secondary' : 'outline'} className="capitalize text-xs h-6 flex items-center gap-1">
                   {consultation.mode === 'online' ? <Video size={12} /> : <Building size={12} />}
@@ -46,3 +47,4 @@ export default function UpcomingConsultationsList({ consultations }: UpcomingCon
     </Card>
   );
 }
+
