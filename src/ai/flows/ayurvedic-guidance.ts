@@ -5,7 +5,7 @@
  *
  * - getAyurvedicGuidance - A function that handles the comprehensive Ayurvedic guidance process.
  * - AyurvedicGuidanceInput - The input type for the getAyurvedicGuidance function.
- * - AyurvedicGuidanceInternalOutput - The LLM's direct text output. The flow returns a richer object.
+ * - AyurvedicGuidanceInternalOutput - The LLM’s direct text output. The flow returns a richer object.
  */
 
 import {ai} from '@/ai/genkit';
@@ -143,7 +143,7 @@ const findProductsTool = ai.defineTool(
     name: 'findProducts',
     description: 'Finds Ayurvedic products based on health concerns, category, or keywords. Use this if the user is looking for remedies, supplements, or wellness items. If the user asks generally for products, this tool can provide a general selection.',
     inputSchema: z.object({
-      query: z.string().optional().describe('The user query for products (e.g., "for stress", "immunity booster", "triphala"). If omitted, a general selection of products will be considered.'),
+      query: z.string().optional().describe('The user query for products (e.g., "for stress", "immunity booster", "triphala"). If omitted or empty, a general selection of products will be considered.'),
       category: z.string().optional().describe('The product category (e.g., "Supplements", "Herbal Powders").'),
     }),
     outputSchema: ProductArraySchema,
@@ -162,7 +162,8 @@ const findProductsTool = ai.defineTool(
       // If no query, but category is provided, filter by category
       filteredProducts = filteredProducts.filter(p => p.category.toLowerCase().includes(input.category!.toLowerCase()));
     }
-    // If neither query nor category is provided, all products (mockProducts) are considered initially.
+    // If neither query nor category is provided (i.e., query is empty or undefined, and category is undefined),
+    // all products (mockProducts) are considered initially.
     
     return filteredProducts.filter(p => p.stock > 0).slice(0, 3); // Return a limited number, in stock
   }
@@ -229,31 +230,37 @@ You can provide information, find practitioners, help book appointments, recomme
 User's question: {{question}}
 
 Follow these guidelines:
-- Your primary goal is to answer the user's question or perform the requested action.
-- If the user asks for general Ayurvedic advice, provide it directly in the 'answer' field of your JSON response.
+- Your primary goal is to understand the user's intent and use the appropriate tool if available, or provide direct advice.
+- If the user asks for general Ayurvedic advice (and not about finding practitioners or products), provide it directly in the 'answer' field of your JSON response.
+
 - If the user is looking for a practitioner:
-  1. **Immediately use the \`findPractitioners\` tool.**
+  1. **You MUST use the \`findPractitioners\` tool.**
      - If they specify a specialization or name, pass it to the tool.
-     - If they ask generally, call the tool with no specific parameters.
-  2. **After the \`findPractitioners\` tool has executed and returned a list to you:**
-     - Your textual 'answer' field in the JSON response should introduce these practitioners (e.g., "Here are some practitioners I found:"). The UI will display details.
+     - If they ask generally (e.g., "find a doctor", "any practitioners?"), call the tool with no specific parameters (e.g., \`{}\` or by omitting optional parameters).
+  2. **After the \`findPractitioners\` tool returns data:**
+     - Your textual 'answer' in the JSON response should be a brief introductory message (e.g., "Here are some practitioners I found:"). The UI will display practitioner details based on structured data from the tool.
+     - If the tool returns an empty list, your 'answer' should state that (e.g., "I couldn't find any practitioners matching your criteria.").
      - If they want to book, gather details (Practitioner ID, Date, Time, Mode) through conversation in the 'answer' field. Use \`getPractitionerAvailability\` if needed.
-     - Once all booking details are gathered, use the \`bookAppointment\` tool. Your 'answer' should then confirm the booking.
+     - Once all booking details are gathered, use the \`bookAppointment\` tool. Your 'answer' should then confirm the booking or relay any issues.
+
 - If the user asks about products (e.g., "show products", "what products for stress?", "turmeric supplements", "any products?"):
-  1. **Immediately use the \`findProducts\` tool.**
+  1. **You MUST use the \`findProducts\` tool.**
   2. If the user provides a specific query (e.g., "for stress", "turmeric"), pass this as the 'query' parameter to the tool.
-  3. If the user asks generally (e.g., "show me some products", "any products?"), call the \`findProducts\` tool with an empty 'query' (e.g., \`{"query": ""}\`) or no specific parameters to get a general selection. The tool is designed to handle this.
-  4. **After the \`findProducts\` tool has executed and returned a list of products to you:**
-     - Your textual 'answer' field in the JSON response should then introduce these products (e.g., "Here are some products I found based on your request:").
-     - The application UI will display the detailed product cards based on the structured data returned by the tool, so do not list all product details in your 'answer' unless the user explicitly asks for text details of a specific product.
+  3. If the user asks generally (e.g., "show me some products", "any products?"), call the \`findProducts\` tool with an empty 'query' (e.g., \`{"query": ""}\`) or by omitting the 'query' parameter. The tool is designed to return a general selection.
+  4. **After the \`findProducts\` tool returns data:**
+     - Your textual 'answer' in the JSON response should be a brief introductory message (e.g., "Here are some products that might interest you:"). The UI will display product details based on structured data from the tool.
+     - If the tool returns an empty list, your 'answer' should state that (e.g., "Sorry, I couldn't find any products for that request.").
+     - Do NOT list all product details in your 'answer' field. The UI handles this.
      - If they want to add a product to the cart, gather product ID and quantity through conversation in the 'answer' field. Then use the \`addProductToCartClientProxy\` tool. Your 'answer' should confirm the action.
+
 - For multi-turn interactions (like booking or choosing a product), guide the user step-by-step via the 'answer' field.
 - **Crucially, regardless of whether you used a tool or not, your final output to the user MUST be a single JSON object with only one key: "answer".** The value of "answer" should be your textual response, incorporating information from any tools you used.
 - Be conversational and helpful in the 'answer' field.
 
 IMPORTANT: Your entire response MUST be a single JSON object that strictly adheres to the output schema: {"answer": "Your textual response here"}.
 Do NOT include any text, explanations, or Markdown formatting (like \`\`\`json ... \`\`\`) around the JSON object.
-Example of a valid response after using the 'findProducts' tool: {"answer": "I found these products for you: Ashwagandha Capsules, Triphala Churna. You can see more details on the side. Would you like to add any to your cart?"}
+Example of a valid response after using the 'findProducts' tool that found items: {"answer": "I found these products for you. You can see more details on the side. Would you like to add any to your cart?"}
+Example of a valid response if 'findProducts' tool found no items: {"answer": "I'm sorry, I couldn't find any products matching 'obscure herb'."}
 Example of a valid response if no tool is used: {"answer": "Ayurveda emphasizes balancing your doshas. For stress, Vata-pacifying practices like warm oil massage and regular routines can be very beneficial."}
 `,
 });
@@ -364,28 +371,27 @@ export async function getAyurvedicGuidance(input: AyurvedicGuidanceInput): Promi
 
   let customData: AyurvedicGuidanceAIFullResponse['customData'] = {};
 
-  if (toolResults) {
-    for (const tr of toolResults) {
-      // Ensure tr.result and tr.result.output are defined before accessing them
-      if (tr.result && tr.result.output) {
-        if (tr.result.name === 'findPractitioners') {
-          customData.practitioners = tr.result.output as PractitionerType[];
-        }
-        if (tr.result.name === 'findProducts') {
-          customData.products = tr.result.output as ProductType[];
-        }
-        if (tr.result.name === 'bookAppointment') {
-          customData.appointmentBookingStatus = tr.result.output as any;
-        }
-        if (tr.result.name === 'addProductToCartClientProxy') {
-          const output = tr.result.output as any;
-          customData.productAddedToCartStatus = {
-            success: output.success,
-            message: output.message,
-            product: output.product,
-            quantity: output.quantity,
-          };
-        }
+  // Populate customData based on the *outputs* of the tools that were called.
+  // This relies on response.toolResponses containing the actual data returned by the tools.
+  if (response.toolResponses && response.toolResponses.length > 0) {
+    for (const toolResp of response.toolResponses) {
+      if (toolResp.name === 'findPractitioners' && toolResp.output) {
+        customData.practitioners = toolResp.output as PractitionerType[];
+      }
+      if (toolResp.name === 'findProducts' && toolResp.output) {
+        customData.products = toolResp.output as ProductType[];
+      }
+      if (toolResp.name === 'bookAppointment' && toolResp.output) {
+        customData.appointmentBookingStatus = toolResp.output as any;
+      }
+      if (toolResp.name === 'addProductToCartClientProxy' && toolResp.output) {
+        const output = toolResp.output as any;
+        customData.productAddedToCartStatus = {
+          success: output.success,
+          message: output.message,
+          product: output.product,
+          quantity: output.quantity,
+        };
       }
     }
   }
@@ -393,7 +399,7 @@ export async function getAyurvedicGuidance(input: AyurvedicGuidanceInput): Promi
   return {
     text: aiTextOutput,
     toolCalls: response.toolRequests?.map(tr => ({ ref: tr.ref, name: tr.name, input: tr.input })), 
-    toolResults: toolResults,
+    toolResults: toolResults, // This contains the historical tool calls and their results
     customData: Object.keys(customData).length > 0 ? customData : undefined,
     error: (response.candidates?.[0]?.finishReason !== 'STOP' && response.candidates?.[0]?.finishReason !== 'TOOL_CALLS') 
             ? (response.candidates?.[0]?.message || 'Unknown error or non-STOP/TOOL_CALLS finish reason from AI model') 
