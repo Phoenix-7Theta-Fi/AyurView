@@ -53,7 +53,7 @@ const AyurvedicGuidanceInputSchema = z.object({
 });
 export type AyurvedicGuidanceInput = z.infer<typeof AyurvedicGuidanceInputSchema>;
 
-// Output schema for the LLM's textual response part
+// Output schema for the LLM’s textual response part
 const AyurvedicGuidanceLLMOutputSchema = z.object({
   answer: z.string().describe('The AI answer to the user question, incorporating Ayurvedic principles and results from any tools called. This text should guide the user or confirm actions.'),
 });
@@ -215,7 +215,7 @@ const addProductToCartClientProxyTool = ai.defineTool(
 const ayurvedicGuidancePrompt = ai.definePrompt({
   name: 'ayurvedicGuidancePrompt',
   input: { schema: AyurvedicGuidanceInputSchema },
-  output: { schema: AyurvedicGuidanceLLMOutputSchema }, // LLM's direct text output should conform to this
+  output: { schema: AyurvedicGuidanceLLMOutputSchema }, // LLM’s direct text output should conform to this
   tools: [
     findPractitionersTool,
     getPractitionerAvailabilityTool,
@@ -236,9 +236,9 @@ Follow these guidelines:
   - Use 'getPractitionerAvailability' if needed to confirm slots for a specific practitioner. The result should inform your 'answer'.
   - Once all details are gathered (Practitioner ID, Date, Time, Mode - default to 'online' if not specified), use 'bookAppointment' tool to confirm. The booking confirmation should be in the 'answer' field.
 - If the user is looking for products (e.g., "show products", for a health concern, or a specific product type):
-  - If the user provides a specific query (like "for stress" or "turmeric"), pass it to the 'findProducts' tool.
-  - If they ask generally (like "show me some products", "what products do you have?", "products"), you **must** call the 'findProducts' tool. You can pass an empty or very generic query if appropriate (e.g., query: "general wellness products" or no query parameter at all if the tool handles it for broad results) to get general recommendations.
-  - Your textual 'answer' should then introduce the products that were found by the tool (e.g., "Here are some products I found:"). The UI will display the product details separately.
+  - If the user provides a specific query (like "for stress" or "turmeric"), you **must** call the 'findProducts' tool with that query.
+  - If the user asks for products generally (e.g., "show me some products", "what products do you have?", "products"), you **must** call the 'findProducts' tool. For such general requests, call the tool without any input parameters, or with an empty 'query' string like {"query": ""}. The tool will provide a general selection.
+  - After the 'findProducts' tool returns results, your textual 'answer' should then introduce the products (e.g., "Here are some products I found:"). The actual product details will be displayed by the application based on the tool's output, so do not list full details in your textual answer unless specifically asked.
 - If they want to add a product to the cart, ask for the product ID (if multiple were found) and quantity in the 'answer' field.
   - Use 'addProductToCartClientProxy' tool. The client application will handle the actual cart update. Inform the user that the item will be added and they can see it in their cart in the 'answer' field.
 - For multi-turn interactions (like booking or choosing a product), guide the user step-by-step via the 'answer' field.
@@ -249,7 +249,7 @@ IMPORTANT: Your entire response MUST be a single JSON object that strictly adher
 Do NOT include any text, explanations, or Markdown formatting (like \`\`\`json ... \`\`\` around the JSON object.
 The JSON object must have a single key: "answer", which contains your textual response.
 Example: {"answer": "Here is some advice..."}
-If you use a tool, the tool's output should inform the content of the "answer" field.
+If you use a tool, the tool's output (after it has been executed and its results are available to you) should inform the content of the "answer" field.
 If no tool is used, your direct advice or question to the user should be in the "answer" field.
 `,
 });
@@ -262,8 +262,8 @@ const ayurvedicGuidanceFlow = ai.defineFlow(
     outputSchema: z.any(), // Output is the raw GenerateResponse
   },
   async (input) => {
-    const llmResponse = await ayurvedicGuidancePrompt(input);
-    return llmResponse; // Return the full GenerateResponse
+    const llmResponse = await ayurvedicGuidancePrompt(input); // This call handles the tool execution loop internally
+    return llmResponse; // Return the final GenerateResponse after any tool calls
   }
 );
 
@@ -330,23 +330,30 @@ export async function getAyurvedicGuidance(input: AyurvedicGuidanceInput): Promi
     const finishReason = response.candidates?.[0]?.finishReason;
     if (finishReason && finishReason !== 'STOP' && finishReason !== 'TOOL_CALLS' && candidateMessage) {
         aiTextOutput = `Error from AI: ${candidateMessage} (Reason: ${finishReason})`;
-    } else if (candidateMessage) {
-        aiTextOutput = `Received an unusual response: ${candidateMessage}`;
+    } else if (candidateMessage) { // If there's no specific error, but we have a candidate message (e.g. from a tool call step)
+        aiTextOutput = candidateMessage; // This could be intermediate text during tool use.
+    } else if (response.toolRequests && response.toolRequests.length > 0) {
+        // If the final response IS a tool request (should ideally be handled by Genkit loop, but as a fallback)
+        aiTextOutput = "I need to use a tool to answer that. Processing..."; // Generic message
+        console.warn("Final AI response was a tool request. This should ideally be handled by the Genkit flow loop.");
     }
     else {
         aiTextOutput = 'Sorry, I received an empty or unparsable response from the AI.';
     }
-    console.error("AI response output and text are both missing/empty or unparsable. Full response:", JSON.stringify(response, null, 2));
+    console.error("AI response output and text are both missing/empty or unparsable, or in an intermediate state. Full response:", JSON.stringify(response, null, 2));
   }
 
 
   // Process the full response to a simpler structure for the client
+  // toolRequests and toolResponses on the *final* GenerateResponse object usually record the history of tool interactions
+  // The actual output data from tools that informed the final `aiTextOutput` is implicitly part of the LLM's knowledge when it generated `aiTextOutput`.
+  // We extract it here again for the UI to render structured data separately.
   const toolResults = response.toolRequests?.map((toolRequest, index) => {
-    const toolResponsePart = response.toolResponses?.[index];
-    if (!toolResponsePart) return null; // Should not happen if toolRequests exists
+    const toolResponsePart = response.toolResponses?.[index]; // This corresponds to the historical tool response for that request.
+    if (!toolResponsePart) return null; 
     return {
-        call: { ref: toolRequest.ref, name: toolRequest.name, input: toolRequest.input }, // Reconstruct ToolCall like structure
-        result: toolResponsePart
+        call: { ref: toolRequest.ref, name: toolRequest.name, input: toolRequest.input }, 
+        result: toolResponsePart // toolResponsePart here IS the {name, output} from the tool
     };
   }).filter(Boolean) as AyurvedicGuidanceAIFullResponse['toolResults'] || undefined;
 
@@ -355,23 +362,26 @@ export async function getAyurvedicGuidance(input: AyurvedicGuidanceInput): Promi
 
   if (toolResults) {
     for (const tr of toolResults) {
-      if (tr.result.name === 'findPractitioners' && tr.result.output) {
-        customData.practitioners = tr.result.output as PractitionerType[];
-      }
-      if (tr.result.name === 'findProducts' && tr.result.output) {
-        customData.products = tr.result.output as ProductType[];
-      }
-      if (tr.result.name === 'bookAppointment' && tr.result.output) {
-        customData.appointmentBookingStatus = tr.result.output as any;
-      }
-      if (tr.result.name === 'addProductToCartClientProxy' && tr.result.output) {
-        const output = tr.result.output as any;
-        customData.productAddedToCartStatus = {
-          success: output.success,
-          message: output.message,
-          product: output.product,
-          quantity: output.quantity,
-        };
+      // Ensure tr.result and tr.result.output are defined before accessing them
+      if (tr.result && tr.result.output) {
+        if (tr.result.name === 'findPractitioners') {
+          customData.practitioners = tr.result.output as PractitionerType[];
+        }
+        if (tr.result.name === 'findProducts') {
+          customData.products = tr.result.output as ProductType[];
+        }
+        if (tr.result.name === 'bookAppointment') {
+          customData.appointmentBookingStatus = tr.result.output as any;
+        }
+        if (tr.result.name === 'addProductToCartClientProxy') {
+          const output = tr.result.output as any;
+          customData.productAddedToCartStatus = {
+            success: output.success,
+            message: output.message,
+            product: output.product,
+            quantity: output.quantity,
+          };
+        }
       }
     }
   }
@@ -386,3 +396,4 @@ export async function getAyurvedicGuidance(input: AyurvedicGuidanceInput): Promi
             : undefined,
   };
 }
+
