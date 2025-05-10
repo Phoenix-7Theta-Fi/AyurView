@@ -1,31 +1,9 @@
 
 'use client';
 
-import { ResponsiveRadialBar } from '@nivo/radial-bar';
-import { useMemo, useState, useEffect } from 'react';
-
-const generateWorkoutData = () => [
-  {
-    id: 'Strength',
-    data: [{ x: 'score', y: Math.floor(Math.random() * 80) + 20 }],
-  },
-  {
-    id: 'Flexibility',
-    data: [{ x: 'score', y: Math.floor(Math.random() * 70) + 30 }],
-  },
-  {
-    id: 'VO2 Max',
-    data: [{ x: 'score', y: Math.floor(Math.random() * 60) + 25 }],
-  },
-  {
-    id: 'Endurance',
-    data: [{ x: 'score', y: Math.floor(Math.random() * 90) + 10 }],
-  },
-  {
-    id: 'Agility',
-    data: [{ x: 'score', y: Math.floor(Math.random() * 75) + 25 }],
-  },
-];
+import { ResponsiveRadar } from '@nivo/radar';
+import { useState, useEffect } from 'react';
+import { mockWorkoutRadarData } from '@/lib/mockData';
 
 const commonProperties = {
   padding: 0.4,
@@ -113,7 +91,7 @@ export default function WorkoutRadialChart() {
 
   useEffect(() => {
     setIsClient(true);
-    setData(generateWorkoutData());
+    setData(mockWorkoutRadarData);
   }, []);
 
   if (!isClient) {
@@ -122,14 +100,107 @@ export default function WorkoutRadialChart() {
 
 
   return (
-    <div className="h-96 w-full" data-ai-hint="fitness score">
-      <ResponsiveRadialBar
+    <div className="h-96 w-full" data-ai-hint="fitness score comparison">
+      <ResponsiveRadar
         data={data}
-        valueFormat=">-.2f"
+        keys={['Actual Score', 'Target Score']}
+        indexBy="metric"
         maxValue={100}
-        endAngle={360}
-        innerRadius={0.2}
-        {...commonProperties}
+        valueFormat=">-.2f"
+        margin={{ top: 60, right: 90, bottom: 50, left: 90 }}
+        curve="linearClosed"
+        borderWidth={2}
+        gridLevels={5}
+        gridShape="circular"
+        gridLabelOffset={15}
+        dotSize={8}
+        dotColor={{ theme: 'background' }}
+        dotBorderWidth={2}
+        enableDotLabel={true}
+        dotLabel="value"
+        dotLabelYOffset={-12}
+        colors={({ key }: { key: string }) =>
+          key === 'Target Score'
+            ? 'hsl(210, 70%, 55%)'
+            : 'hsl(var(--chart-1))'
+        }
+        fillOpacity={0.20}
+        blendMode="normal"
+        motionConfig="wobbly"
+        borderColor={(item: any) => item.color}
+        dotBorderColor={(item: any) => item.color}
+        legends={[
+          {
+            anchor: 'top-right',
+            direction: 'column',
+            translateX: 0,
+            translateY: -50,
+            itemWidth: 100,
+            itemHeight: 20,
+            itemTextColor: 'hsl(var(--muted-foreground))',
+            symbolSize: 12,
+            symbolShape: 'circle',
+            effects: [
+              {
+                on: 'hover',
+                style: {
+                  itemTextColor: 'hsl(var(--foreground))',
+                },
+              },
+            ],
+          },
+        ]}
+        theme={{
+          background: "hsl(var(--card))",
+          textColor: "hsl(var(--card-foreground))",
+          fontSize: 11,
+          axis: {
+            domain: {
+              line: {
+                stroke: "hsl(var(--border))",
+                strokeWidth: 1,
+              },
+            },
+            ticks: {
+              text: {
+                fill: "hsl(var(--muted-foreground))",
+                fontSize: 10,
+              },
+            },
+            legend: {
+              text: {
+                fill: "hsl(var(--foreground))",
+              },
+            },
+          },
+          grid: {
+            line: {
+              stroke: "hsl(var(--border))",
+              strokeDasharray: "2 2",
+            },
+          },
+          dots: {
+            text: {
+              fill: "hsl(var(--foreground))",
+              fontSize: 12,
+              fontWeight: 'bold',
+            }
+          },
+          tooltip: {
+            container: {
+              background: "hsl(var(--background))",
+              color: "hsl(var(--foreground))",
+              fontSize: 12,
+              borderRadius: "var(--radius)",
+              boxShadow: "0 3px 6px rgba(0,0,0,0.1)",
+            },
+          },
+          legends: {
+            text: {
+              fill: "hsl(var(--muted-foreground))",
+            }
+          }
+        }}
       />
     </div>
   );

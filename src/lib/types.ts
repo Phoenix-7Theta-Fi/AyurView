@@ -91,3 +91,12 @@ export interface TreatmentPlanActivity {
   icon: string; // Name of the Lucide icon (e.g., "Coffee", "Sprout")
   status: 'pending' | 'completed' | 'missed'; // For potential tracking
 }
+
+export interface GanttTask {
+  id: string;
+  name: string;
+  startDate: string; // ISO date string
+  endDate: string; // ISO date string
+  category: 'Wellness' | 'Diet' | 'Medication' | 'Therapy' | 'Fitness' | 'Lifestyle';
+  status?: 'pending' | 'in-progress' | 'completed';
+}

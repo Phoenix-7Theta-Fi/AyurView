@@ -1,5 +1,5 @@
 
-import type { Practitioner, Product, TimeSlot, Milestone, ConcerningBiomarker, UpcomingConsultation, TreatmentPlanActivity } from '@/lib/types';
+import type { Practitioner, Product, TimeSlot, Milestone, ConcerningBiomarker, UpcomingConsultation, TreatmentPlanActivity, GanttTask } from '@/lib/types';
 // Lucide icons will be dynamically imported in components, so direct imports here are removed.
 
 export const mockPractitioners: Practitioner[] = [
@@ -64,6 +64,57 @@ export const mockPractitioners: Practitioner[] = [
     availability: 'Wed, Fri (11 AM - 4 PM)',
     location: 'Online & Rishikesh Ashram',
   },
+];
+
+export const mockTreatmentTimeline: GanttTask[] = [
+  {
+    id: 'tt1',
+    name: 'Initial Consultation & Assessment',
+    startDate: '2024-07-01',
+    endDate: '2024-07-03',
+    category: 'Wellness',
+    status: 'completed'
+  },
+  {
+    id: 'tt2',
+    name: 'Vata-Pacifying Diet Plan',
+    startDate: '2024-07-04',
+    endDate: '2024-08-15',
+    category: 'Diet',
+    status: 'in-progress'
+  },
+  {
+    id: 'tt3',
+    name: 'Stress Management Program',
+    startDate: '2024-07-10',
+    endDate: '2024-08-30',
+    category: 'Therapy',
+    status: 'in-progress'
+  },
+  {
+    id: 'tt4',
+    name: 'Herbal Supplement Course',
+    startDate: '2024-08-01',
+    endDate: '2024-09-30',
+    category: 'Medication',
+    status: 'pending'
+  },
+  {
+    id: 'tt5',
+    name: 'Yoga & Pranayama Practice',
+    startDate: '2024-07-15',
+    endDate: '2024-09-15',
+    category: 'Fitness',
+    status: 'in-progress'
+  },
+  {
+    id: 'tt6',
+    name: 'Sleep Optimization Protocol',
+    startDate: '2024-07-20',
+    endDate: '2024-08-20',
+    category: 'Lifestyle',
+    status: 'in-progress'
+  }
 ];
 
 export const MOCK_TIME_SLOTS: TimeSlot[] = [
@@ -155,6 +206,40 @@ export const mockProducts: Product[] = [
     dataAiHint: 'herbal powder bag',
     category: 'Herbal Powders',
     stock: 0, // Out of stock example
+  },
+];
+
+export interface WorkoutRadarDataPoint {
+  metric: string;
+  'Actual Score': number;
+  'Target Score': number;
+}
+
+export const mockWorkoutRadarData: WorkoutRadarDataPoint[] = [
+  {
+    metric: 'Strength',
+    'Actual Score': 72,
+    'Target Score': 85,
+  },
+  {
+    metric: 'Flexibility',
+    'Actual Score': 68,
+    'Target Score': 75,
+  },
+  {
+    metric: 'VO2 Max',
+    'Actual Score': 54,
+    'Target Score': 60,
+  },
+  {
+    metric: 'Endurance',
+    'Actual Score': 80,
+    'Target Score': 90,
+  },
+  {
+    metric: 'Agility',
+    'Actual Score': 63,
+    'Target Score': 80,
   },
 ];
 

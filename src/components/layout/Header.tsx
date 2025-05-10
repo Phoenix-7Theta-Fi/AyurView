@@ -3,11 +3,12 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Bot, LayoutDashboard, Leaf, Users, ShoppingCart as ShoppingCartLucideIcon, ClipboardList, CalendarCheck } from 'lucide-react';
+import { Bot, LayoutDashboard, Leaf, Users, ShoppingCart as ShoppingCartLucideIcon, ClipboardList, CalendarCheck, LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import ShoppingCartIcon from '@/components/shop/ShoppingCartIcon';
-import ShoppingCart from '@/components/shop/ShoppingCart'; // Import the cart modal
+import ShoppingCart from '@/components/shop/ShoppingCart';
+import { useRouter } from 'next/navigation';
 
 const navItems = [
   { href: '/chatbot', label: 'Chatbot', icon: Bot },
@@ -20,6 +21,25 @@ const navItems = [
 
 export default function Header() {
   const pathname = usePathname();
+  const router = useRouter();
+
+  const handleSignOut = async () => {
+    try {
+      const response = await fetch('/api/auth/signout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        router.push('/');
+        router.refresh();
+      }
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
+  };
 
   return (
     <>
@@ -49,6 +69,14 @@ export default function Header() {
               </Button>
             ))}
             <ShoppingCartIcon />
+            <Button
+              variant="ghost"
+              onClick={handleSignOut}
+              className="flex items-center gap-2 px-2 py-2 sm:px-3 rounded-md text-foreground hover:bg-destructive/10 hover:text-destructive"
+            >
+              <LogOut size={20} />
+              <span className="hidden sm:inline">Sign Out</span>
+            </Button>
           </nav>
         </div>
       </header>
@@ -56,4 +84,3 @@ export default function Header() {
     </>
   );
 }
-
