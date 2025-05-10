@@ -13,8 +13,17 @@ import type { ChatMessage } from '@/lib/types';
 import { format } from 'date-fns';
 import { useToast } from "@/hooks/use-toast";
 
+import ProductCard from '@/components/shop/ProductCard';
+import PractitionerCard from '@/components/practitioners/PractitionerCard';
+import type { Product, Practitioner } from '@/lib/types';
+
+export type ChatbotMessage = ChatMessage & {
+  products?: Product[];
+  practitioners?: Practitioner[];
+};
+
 export default function ChatInterface() {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [messages, setMessages] = useState<ChatbotMessage[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -36,6 +45,7 @@ export default function ChatInterface() {
         role: 'assistant',
         content: "Namaste! I am AyurAid. I can help you with Ayurvedic guidance and information. How can I assist you today?",
         timestamp: new Date(),
+        products: [],
       }
     ]);
   }, []);
@@ -64,11 +74,13 @@ export default function ChatInterface() {
         },
         body: JSON.stringify({ question: currentInput }),
       });
-      
+
       const data = await response.json();
-      
+
       let assistantContent = data.text || 'I received a response, but it was empty.';
-      
+      let products: Product[] = Array.isArray(data.products) ? data.products : [];
+      let practitioners: Practitioner[] = Array.isArray(data.practitioners) ? data.practitioners : [];
+
       if (data.error) {
         assistantContent = `Sorry, I encountered an error: ${data.error}. Please try again.`;
         toast({
@@ -77,23 +89,26 @@ export default function ChatInterface() {
           variant: "destructive",
         });
       }
-      
-      const assistantMessage: ChatMessage = {
+
+      const assistantMessage: ChatbotMessage = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
         content: assistantContent,
         timestamp: new Date(),
+        products,
+        practitioners,
       };
       setMessages((prev) => [...prev, assistantMessage]);
 
     } catch (error) {
       console.error('Error getting chatbot response:', error);
       const errorMessageContent = error instanceof Error ? error.message : 'An unknown error occurred.';
-      const errorMessage: ChatMessage = {
+      const errorMessage: ChatbotMessage = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
         content: `Sorry, I encountered an error: ${errorMessageContent}. Please try again.`,
         timestamp: new Date(),
+        products: [],
       };
       setMessages((prev) => [...prev, errorMessage]);
       toast({
@@ -115,37 +130,59 @@ export default function ChatInterface() {
               {messages.map((message) => (
                 <div
                   key={message.id}
-                  className={`flex items-end gap-3 ${
-                    message.role === 'user' ? 'justify-end' : 'justify-start'
+                  className={`flex flex-col gap-2 ${
+                    message.role === 'user' ? 'items-end' : 'items-start'
                   }`}
                 >
-                  {message.role === 'assistant' && (
-                    <Avatar className="h-8 w-8 sm:h-10 sm:w-10 shadow-sm self-start">
-                      <AvatarFallback className="bg-primary text-primary-foreground">
-                        <Sparkles size={20} />
-                      </AvatarFallback>
-                    </Avatar>
+                  <div className={`flex items-end gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                    {message.role === 'assistant' && (
+                      <Avatar className="h-8 w-8 sm:h-10 sm:w-10 shadow-sm self-start">
+                        <AvatarFallback className="bg-primary text-primary-foreground">
+                          <Sparkles size={20} />
+                        </AvatarFallback>
+                      </Avatar>
+                    )}
+                    <Card
+                      className={`max-w-xs sm:max-w-md md:max-w-lg lg:max-w-xl p-3 sm:p-4 rounded-2xl shadow-md animate-in fade-in-0 slide-in-from-bottom-4 duration-300 ${
+                        message.role === 'user'
+                          ? 'bg-accent text-accent-foreground rounded-br-none'
+                          : 'bg-background border-border text-foreground rounded-bl-none'
+                      }`}
+                    >
+                      <CardContent className="p-0 text-sm sm:text-base leading-relaxed">
+                        <p className="whitespace-pre-wrap">{message.content}</p>
+                        <p className={`text-xs mt-2 ${message.role === 'user' ? 'text-accent-foreground/70' : 'text-muted-foreground/70'}`}>
+                          {format(new Date(message.timestamp), 'p')}
+                        </p>
+                      </CardContent>
+                    </Card>
+                    {message.role === 'user' && (
+                      <Avatar className="h-8 w-8 sm:h-10 sm:w-10 shadow-sm self-start">
+                        <AvatarFallback className="bg-accent text-accent-foreground">
+                          <User size={20} />
+                        </AvatarFallback>
+                      </Avatar>
+                    )}
+                  </div>
+                  {/* Render product cards if present */}
+                  {message.products && message.products.length > 0 && (
+                    <div className="flex flex-wrap gap-4 mt-2">
+                      {message.products.map((product) => (
+                        <div key={product.id} className="w-72">
+                          <ProductCard product={product} />
+                        </div>
+                      ))}
+                    </div>
                   )}
-                  <Card
-                    className={`max-w-xs sm:max-w-md md:max-w-lg lg:max-w-xl p-3 sm:p-4 rounded-2xl shadow-md animate-in fade-in-0 slide-in-from-bottom-4 duration-300 ${
-                      message.role === 'user'
-                        ? 'bg-accent text-accent-foreground rounded-br-none'
-                        : 'bg-background border-border text-foreground rounded-bl-none'
-                    }`}
-                  >
-                    <CardContent className="p-0 text-sm sm:text-base leading-relaxed">
-                      <p className="whitespace-pre-wrap">{message.content}</p>
-                      <p className={`text-xs mt-2 ${message.role === 'user' ? 'text-accent-foreground/70' : 'text-muted-foreground/70'}`}>
-                        {format(new Date(message.timestamp), 'p')}
-                      </p>
-                    </CardContent>
-                  </Card>
-                  {message.role === 'user' && (
-                    <Avatar className="h-8 w-8 sm:h-10 sm:w-10 shadow-sm self-start">
-                      <AvatarFallback className="bg-accent text-accent-foreground">
-                        <User size={20} />
-                      </AvatarFallback>
-                    </Avatar>
+                  {/* Render practitioner cards if present */}
+                  {message.practitioners && message.practitioners.length > 0 && (
+                    <div className="flex flex-wrap gap-4 mt-2">
+                      {message.practitioners.map((practitioner) => (
+                        <div key={practitioner.id} className="w-80">
+                          <PractitionerCard practitioner={practitioner} />
+                        </div>
+                      ))}
+                    </div>
                   )}
                 </div>
               ))}
