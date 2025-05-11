@@ -49,38 +49,71 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
     }
 
-    // Build query
+    // Build query to handle both string and ObjectId formats for userId
     const query: any = {
-      userId: new ObjectId(user._id),
+      $or: [
+        { userId: new ObjectId(user._id) },  // Match ObjectId format
+        { userId: user._id.toString() }      // Match string format
+      ],
       date: {
         $gte: startDate,
         $lte: endDate
       }
     };
 
+    console.log('User ID from token:', user._id);
+    console.log('Query $or conditions:', query.$or);
+    console.log('Date range:', { startDate, endDate });
+
     // Add biomarker type filter if specified
     if (biomarkerTypes.length > 0) {
       query.biomarkerName = { $in: biomarkerTypes };
     }
 
-    // Fetch biomarker data
-    const biomarkerData = await db.collection("biomarkers")
-      .find(query)
-      .sort({ date: 1 })
-      .toArray();
+    console.log('Query:', query);
+    
+    // Fetch the latest record for each biomarker type
+    const biomarkerData = await db.collection("biomarkers").aggregate([
+      { $match: query },
+      { 
+        $sort: { 
+          biomarkerName: 1,
+          date: -1 
+        }
+      },
+      {
+        $group: {
+          _id: "$biomarkerName",
+          id: { $first: "$_id" },
+          biomarkerName: { $first: "$biomarkerName" },
+          value: { $first: "$value" },
+          unit: { $first: "$unit" },
+          date: { $first: "$date" },
+          referenceRange: { $first: "$referenceRange" },
+          targetValue: { $first: "$targetValue" }
+        }
+      },
+      { $sort: { biomarkerName: 1 } }
+    ]).toArray();
 
-    // Transform MongoDB _id to string id for client
-    const transformedData = biomarkerData.map(record => ({
-      id: record._id.toString(),
-      biomarkerName: record.biomarkerName,
-      value: record.value,
-      unit: record.unit,
-      date: record.date,
-      referenceRange: record.referenceRange,
-      targetValue: record.targetValue
-    }));
+    console.log('Found biomarker records:', biomarkerData.length);
+    if (biomarkerData.length > 0) {
+      console.log('Sample record:', JSON.stringify(biomarkerData[0], null, 2));
+    }
 
-    return NextResponse.json({
+    // Transform MongoDB documents for client
+    const transformedData = biomarkerData.map(record => {
+      // Convert _id to id string
+      const { _id, ...rest } = record;
+      return {
+        id: _id.toString(),  // Ensure consistent id field
+        ...rest  // Keep all other fields
+      };
+    });
+
+    console.log('Sample transformed record:', transformedData[0]);
+
+    const response = {
       success: true,
       data: transformedData,
       metadata: {
@@ -88,7 +121,10 @@ export async function GET(request: Request) {
         endDate: endDate.toISOString(),
         totalRecords: transformedData.length
       }
-    });
+    };
+
+    console.log('Sending response with', transformedData.length, 'records');
+    return NextResponse.json(response);
 
   } catch (error) {
     console.error("Error fetching biomarker data:", error);

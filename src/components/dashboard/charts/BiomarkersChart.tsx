@@ -97,7 +97,13 @@ export default function BiomarkersChart() {
           return;
         }
 
-        const response = await fetch('/api/biomarkers', {
+        console.log('Fetching biomarkers with token:', token.substring(0, 20) + '...');
+        // Get date range for last 30 days
+        const endDate = new Date();
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - 30);
+
+        const response = await fetch(`/api/biomarkers?startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -108,9 +114,36 @@ export default function BiomarkersChart() {
         }
 
         const result = await response.json();
-        
-        // Transform API data to match component's display format
-        const displayData: BiomarkerDisplayData[] = result.data.map((bm: any) => {
+        console.log('Raw API response:', result);
+
+        if (!result.data || !Array.isArray(result.data)) {
+          throw new Error('Invalid data format received from API');
+        }
+
+        console.log('Number of biomarker records received:', result.data.length);
+
+        // Validate and filter out invalid records
+        const validRecords = result.data.filter((bm: any, index: number) => {
+          const isValid = bm && 
+                         typeof bm.biomarkerName === 'string' &&
+                         typeof bm.value === 'number' &&
+                         typeof bm.unit === 'string' &&
+                         bm.referenceRange &&
+                         typeof bm.referenceRange.min === 'number' &&
+                         typeof bm.referenceRange.max === 'number' &&
+                         typeof bm.targetValue === 'number';
+
+          if (!isValid) {
+            console.warn(`Invalid biomarker record at index ${index}:`, bm);
+          }
+          return isValid;
+        });
+
+        console.log('Number of valid biomarker records:', validRecords.length);
+        console.log('Starting data transformation with valid records...');
+
+        // Transform valid records to match component's display format
+        const displayData: BiomarkerDisplayData[] = validRecords.map((bm: any) => {
           let status: BiomarkerDisplayData['status'] = 'optimal';
           let statusText = 'Optimal';
 
@@ -144,11 +177,14 @@ export default function BiomarkersChart() {
           };
         });
 
-        setData(displayData);
+        const transformedData = displayData;
+        console.log('Transformed display data:', transformedData);
+        
+        setData(transformedData);
         setError(null);
       } catch (err) {
-        console.error('Error fetching biomarker data:', err);
-        setError('Failed to load biomarker data');
+        console.error('Error in biomarker data processing:', err);
+        setError(err instanceof Error ? err.message : 'Failed to load biomarker data');
       } finally {
         setIsLoading(false);
       }
