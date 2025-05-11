@@ -1,4 +1,3 @@
-
 'use client';
 
 import type { Practitioner } from '@/lib/types';
@@ -7,8 +6,11 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Button } from '@/components/ui/button';
 import { Star, MapPin, CalendarDays, Info, CheckCircle } from 'lucide-react';
 import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import PractitionerInfoModal from './PractitionerInfoModal';
 import BookAppointmentModal from './BookAppointmentModal';
+import { useToast } from '@/hooks/use-toast';
+import { bookConsultation } from '@/hooks/use-practitioners';
 
 interface PractitionerCardProps {
   practitioner: Practitioner;
@@ -17,8 +19,65 @@ interface PractitionerCardProps {
 export default function PractitionerCard({ practitioner }: PractitionerCardProps) {
   const [isInfoModalOpen, setIsInfoModalOpen] = useState(false);
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
+  const [isBooking, setIsBooking] = useState(false);
+  const { toast } = useToast();
+  const router = useRouter();
 
-  const generatedImageUrl = practitioner.imageUrl || `https://randomuser.me/api/portraits/${practitioner.gender === 'male' ? 'men' : 'women'}/${parseInt(practitioner.id) % 100}.jpg`;
+  const handleBookClick = () => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      toast({
+        title: "Authentication Required",
+        description: "Please sign in to book an appointment",
+        variant: "destructive"
+      });
+      router.push('/login');
+      return;
+    }
+    setIsBookingModalOpen(true);
+  };
+
+  const handleBookAppointment = async (date: string, time: string, mode: 'online' | 'in-person') => {
+    try {
+      setIsBooking(true);
+      await bookConsultation({
+        practitionerId: practitioner._id?.toString() || practitioner.id,
+        date,
+        time,
+        mode
+      });
+      
+      toast({
+        title: "Appointment Booked!",
+        description: `Your appointment with ${practitioner.name} has been scheduled for ${date} at ${time}.`,
+      });
+      
+      setIsBookingModalOpen(false);
+    } catch (error) {
+      // Handle authentication errors
+      if (error instanceof Error && error.message.includes('sign in')) {
+        toast({
+          title: "Authentication Required",
+          description: "Please sign in to book an appointment",
+          variant: "destructive"
+        });
+        setIsBookingModalOpen(false);
+        router.push('/login');
+      } else {
+        // Handle other booking errors
+        toast({
+          title: "Booking Failed",
+          description: error instanceof Error ? error.message : "Failed to book appointment",
+          variant: "destructive"
+        });
+      }
+    } finally {
+      setIsBooking(false);
+    }
+  };
+
+  // Generate a consistent image URL
+  const generatedImageUrl = practitioner.imageUrl || `https://picsum.photos/seed/${practitioner.name.toLowerCase().replace(/\s+/g, '_')}/400/400`;
 
   return (
     <>
@@ -30,7 +89,6 @@ export default function PractitionerCard({ practitioner }: PractitionerCardProps
               alt={practitioner.name}
               layout="fill"
               objectFit="cover"
-              // data-ai-hint removed as image source is now specific (randomuser.me)
             />
           </div>
         </CardHeader>
@@ -69,9 +127,13 @@ export default function PractitionerCard({ practitioner }: PractitionerCardProps
             <Info size={18} className="mr-2" />
             Info
           </Button>
-          <Button onClick={() => setIsBookingModalOpen(true)} className="w-full bg-primary hover:bg-primary/90 text-primary-foreground">
+          <Button 
+            onClick={handleBookClick} 
+            className="w-full bg-primary hover:bg-primary/90 text-primary-foreground"
+            disabled={isBooking}
+          >
             <CheckCircle size={18} className="mr-2" />
-            Book 
+            {isBooking ? 'Booking...' : 'Book'}
           </Button>
         </CardFooter>
       </Card>
@@ -83,9 +145,11 @@ export default function PractitionerCard({ practitioner }: PractitionerCardProps
         onOpenChange={setIsInfoModalOpen} 
       />
       <BookAppointmentModal 
-        practitioner={practitioner} 
+        practitioner={practitioner}
         open={isBookingModalOpen} 
-        onOpenChange={setIsBookingModalOpen} 
+        onOpenChange={setIsBookingModalOpen}
+        onBook={handleBookAppointment}
+        isBooking={isBooking}
       />
     </>
   );

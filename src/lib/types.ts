@@ -1,7 +1,8 @@
-
 import type { LucideIcon } from "lucide-react";
+import type { ObjectId } from "mongodb";
 
 export interface Practitioner {
+  _id?: ObjectId;
   id: string;
   name: string;
   specialization: string;
@@ -12,6 +13,11 @@ export interface Practitioner {
   availability: string;
   location: string;
   dataAiHint?: string;
+  availabilitySlots?: Array<{
+    date: string;
+    time: string;
+    available: boolean;
+  }>;
 }
 
 export interface Product {
@@ -43,10 +49,21 @@ export interface ChatMessage {
   isLoading?: boolean; // For AI thinking state
 }
 
-
 export interface MedicationAdherenceData {
   date: Date;
   adherence: number; // 0 to 1, representing percentage
+}
+
+export interface Consultation {
+  _id?: ObjectId;
+  practitionerId: ObjectId;
+  practitionerName: string;
+  specialization: string;
+  date: string;
+  time: string;
+  mode: 'online' | 'in-person';
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 // Wrapper type for the AI response from getAyurvedicGuidance
