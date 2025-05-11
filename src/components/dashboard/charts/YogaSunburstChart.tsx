@@ -2,6 +2,8 @@
 
 import ReactECharts from 'echarts-for-react';
 import type { EChartsOption } from 'echarts';
+import { useState, useEffect } from 'react';
+import { useYogaPractices } from '@/hooks/use-yoga-practices';
 
 // Define a cohesive color palette
 const YOGA_COLORS = {
@@ -43,174 +45,49 @@ const assignColors = (node: any, level: number = 0, parentColor?: string) => {
   }
 };
 
-// Generate mock data with 4 layers
-const generateYogaData = () => ({
-  name: 'Yoga Practices',
-  children: [
-    {
-      name: 'Hatha Yoga',
-      value: 180,
-      children: [
-        {
-          name: 'Posture Alignment',
-          value: 100,
-          children: [
-            { 
-              name: 'Balance Practice',
-              value: 50,
-              children: [
-                { name: 'Standing Poses', value: 25 },
-                { name: 'Core Strength', value: 25 }
-              ]
-            },
-            { 
-              name: 'Spine Health',
-              value: 50,
-              children: [
-                { name: 'Back Bends', value: 25 },
-                { name: 'Twists', value: 25 }
-              ]
-            }
-          ],
-        },
-        {
-          name: 'Breath Control',
-          value: 80,
-          children: [
-            {
-              name: 'Pranayama',
-              value: 80,
-              children: [
-                { name: 'Meditation', value: 40 },
-                { name: 'Energy Work', value: 40 }
-              ]
-            }
-          ],
-        },
-      ],
-    },
-    {
-      name: 'Vinyasa Flow',
-      value: 150,
-      children: [
-        {
-          name: 'Dynamic Flow',
-          value: 150,
-          children: [
-            {
-              name: 'Power Yoga',
-              value: 75,
-              children: [
-                { name: 'Strength Flow', value: 40 },
-                { name: 'Core Flow', value: 35 }
-              ]
-            },
-            {
-              name: 'Endurance',
-              value: 75,
-              children: [
-                { name: 'Flow Sequences', value: 40 },
-                { name: 'Transitions', value: 35 }
-              ]
-            }
-          ],
-        },
-      ],
-    },
-    {
-      name: 'Yin Yoga',
-      value: 120,
-      children: [
-        {
-          name: 'Deep Stretch',
-          value: 120,
-          children: [
-            {
-              name: 'Joint Health',
-              value: 60,
-              children: [
-                { name: 'Hip Opening', value: 30 },
-                { name: 'Shoulder Release', value: 30 }
-              ]
-            },
-            {
-              name: 'Fascia Release',
-              value: 60,
-              children: [
-                { name: 'Meridian Work', value: 30 },
-                { name: 'Tissue Release', value: 30 }
-              ]
-            }
-          ],
-        },
-      ],
-    },
-    {
-      name: 'Ashtanga',
-      value: 140,
-      children: [
-        {
-          name: 'Traditional Series',
-          value: 140,
-          children: [
-            {
-              name: 'Primary Series',
-              value: 70,
-              children: [
-                { name: 'Sun Salutations', value: 35 },
-                { name: 'Standing Sequence', value: 35 }
-              ]
-            },
-            {
-              name: 'Intermediate',
-              value: 70,
-              children: [
-                { name: 'Backbends', value: 35 },
-                { name: 'Arm Balances', value: 35 }
-              ]
-            }
-          ],
-        },
-      ],
-    },
-    {
-      name: 'Kundalini',
-      value: 110,
-      children: [
-        {
-          name: 'Energy Work',
-          value: 110,
-          children: [
-            {
-              name: 'Chakra Focus',
-              value: 55,
-              children: [
-                { name: 'Lower Chakras', value: 30 },
-                { name: 'Upper Chakras', value: 25 }
-              ]
-            },
-            {
-              name: 'Kriya Practice',
-              value: 55,
-              children: [
-                { name: 'Breathing', value: 30 },
-                { name: 'Movement', value: 25 }
-              ]
-            }
-          ],
-        },
-      ],
-    },
-  ],
-});
 
 export default function YogaSunburstChart() {
-  // Get mock data and calculate total time
-  const data = generateYogaData();
-  const totalPracticeTime = data.children.reduce((sum, child) => sum + (child.value || 0), 0);
+  const { data, isLoading, error, totalPracticeTime } = useYogaPractices();
+  const [isClient, setIsClient] = useState(false);
 
-  // Apply colors to the data
-  data.children.forEach(child => assignColors(child, 1));
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  // Apply colors to the data when available
+  if (data.length > 0) {
+    data.forEach(child => assignColors(child, 1));
+  }
+
+  if (!isClient || isLoading) {
+    return (
+      <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6">
+        <div className="h-[450px] w-full flex items-center justify-center text-slate-500">
+          Loading yoga practice data...
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6">
+        <div className="h-[450px] w-full flex items-center justify-center text-slate-500">
+          Error: {error}
+        </div>
+      </div>
+    );
+  }
+
+  if (data.length === 0) {
+    return (
+      <div className="bg-white rounded-xl shadow-lg p-4 sm:p-6">
+        <div className="h-[450px] w-full flex items-center justify-center text-slate-500">
+          No yoga practice data available
+        </div>
+      </div>
+    );
+  }
 
   const option: EChartsOption = {
     backgroundColor: 'transparent',
@@ -261,7 +138,7 @@ export default function YogaSunburstChart() {
     },
     series: {
       type: 'sunburst',
-      data: data.children,
+      data: data,
       radius: ['25%', '95%'],
       sort: undefined,
       itemStyle: {
