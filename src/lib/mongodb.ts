@@ -132,6 +132,19 @@ module.exports = {
   mongodb: client
 };
 
+// Database connection helper for API routes
+export async function connectToDatabase() {
+  try {
+    await connectToDb();
+    return {
+      db: client.db("ayurview")
+    };
+  } catch (error) {
+    console.error("Error connecting to database:", error);
+    throw error;
+  }
+}
+
 // Export for ESM
 export {
   connectToDb,
