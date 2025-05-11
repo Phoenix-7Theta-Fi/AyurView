@@ -1,107 +1,95 @@
-
 'use client';
 
 import { ResponsivePie } from '@nivo/pie';
 import { useMemo, useState, useEffect } from 'react';
+import type { LegendAnchor, LegendDirection } from '@nivo/legends';
+import { MeditationPractice, MeditationData } from '@/lib/types';
 
-const generateMeditationData = () => [
-  {
-    id: 'Mindfulness',
-    label: 'Mindfulness',
-    value: Math.floor(Math.random() * 30) + 20, // sessions or minutes
-    color: '#4CAF50', // Primary Green
-  },
-  {
-    id: 'Transcendental',
-    label: 'Transcendental',
-    value: Math.floor(Math.random() * 20) + 10,
-    color: '#A0522D', // Accent Brown
-  },
-  {
-    id: 'Vipassana',
-    label: 'Vipassana',
-    value: Math.floor(Math.random() * 15) + 5,
-    color: '#8BC34A', // Lighter Green
-  },
-  {
-    id: 'Zazen',
-    label: 'Zazen',
-    value: Math.floor(Math.random() * 10) + 5,
-    color: '#F5B041', // Orange
-  },
-  {
-    id: 'Loving-Kindness',
-    label: 'Loving-Kindness',
-    value: Math.floor(Math.random() * 25) + 15,
-    color: '#5DADE2', // Blue
-  },
-];
+const PRACTICE_COLORS = {
+  'mindfulness': '#4CAF50',    // Primary Green
+  'breath-work': '#8BC34A',    // Light Green
+  'body-scan': '#A0522D',      // Brown
+  'loving-kindness': '#5DADE2', // Blue
+  'transcendental': '#F5B041',  // Orange
+  'guided': '#9B59B6'          // Purple
+};
+
+async function fetchMeditationData(date?: string): Promise<MeditationPractice[]> {
+  const token = localStorage.getItem('token');
+  if (!token) throw new Error('No authentication token found');
+
+  const url = new URL('/api/meditation-practices', window.location.origin);
+  if (date) url.searchParams.set('date', date);
+
+  const response = await fetch(url, {
+    headers: {
+      'Authorization': `Bearer ${token}`
+    }
+  });
+
+  if (!response.ok) {
+    throw new Error('Failed to fetch meditation data');
+  }
+
+  return response.json();
+}
+
+function processMeditationData(practices: MeditationPractice[]): MeditationData {
+  const practicesByType: { [key: string]: { completed: number; attempted: number; totalDuration: number } } = {};
+  let totalSessions = 0;
+  let completedSessions = 0;
+  let totalDuration = 0;
+
+  practices.forEach(practice => {
+    if (!practicesByType[practice.practiceType]) {
+      practicesByType[practice.practiceType] = {
+        completed: 0,
+        attempted: 0,
+        totalDuration: 0
+      };
+    }
+
+    practicesByType[practice.practiceType].attempted++;
+    totalSessions++;
+    
+    if (practice.completed) {
+      practicesByType[practice.practiceType].completed++;
+      completedSessions++;
+    }
+
+    practicesByType[practice.practiceType].totalDuration += practice.duration;
+    totalDuration += practice.duration;
+  });
+
+  return {
+    practicesByType,
+    totalSessions,
+    completionRate: totalSessions > 0 ? completedSessions / totalSessions : 0,
+    totalDuration
+  };
+}
+
+type ChartData = {
+  id: string;
+  label: string;
+  value: number;
+  color: string;
+};
 
 const commonProperties = {
-  margin: { top: 20, right: 40, bottom: 70, left: 40 }, // Adjusted margins
-  innerRadius: 0.5, // This makes it a donut chart
+  margin: { top: 20, right: 40, bottom: 70, left: 40 },
+  innerRadius: 0.5,
   padAngle: 0.7,
   cornerRadius: 3,
   activeOuterRadiusOffset: 8,
   borderWidth: 1,
-  borderColor: {
-    from: 'color',
-    modifiers: [['darker', 0.2]],
-  },
+  enableArcLinkLabels: true,
   arcLinkLabelsSkipAngle: 10,
   arcLinkLabelsTextColor: 'hsl(var(--muted-foreground))',
   arcLinkLabelsThickness: 2,
   arcLinkLabelsColor: { from: 'color' },
   arcLabelsSkipAngle: 10,
-  arcLabelsTextColor: {
-    from: 'color',
-    modifiers: [['darker', 3]],
-  },
-  defs: [ // For patterns or gradients, optional
-    {
-      id: 'dots',
-      type: 'patternDots',
-      background: 'inherit',
-      color: 'rgba(255, 255, 255, 0.3)',
-      size: 4,
-      padding: 1,
-      stagger: true,
-    },
-    {
-      id: 'lines',
-      type: 'patternLines',
-      background: 'inherit',
-      color: 'rgba(255, 255, 255, 0.3)',
-      rotation: -45,
-      lineWidth: 6,
-      spacing: 10,
-    },
-  ],
-  legends: [
-    {
-      anchor: 'bottom' as const,
-      direction: 'row' as const,
-      justify: false,
-      translateX: 0,
-      translateY: 50, // Adjusted legend Y position
-      itemsSpacing: 0,
-      itemWidth: 100,
-      itemHeight: 18,
-      itemTextColor: 'hsl(var(--muted-foreground))',
-      itemDirection: 'left-to-right' as const,
-      itemOpacity: 1,
-      symbolSize: 18,
-      symbolShape: 'circle' as const,
-      effects: [
-        {
-          on: 'hover',
-          style: {
-            itemTextColor: 'hsl(var(--foreground))',
-          },
-        },
-      ],
-    },
-  ],
+  arcLabelsTextColor: '#ffffff',
   theme: {
     background: "hsl(var(--card))",
     textColor: "hsl(var(--card-foreground))",
@@ -115,38 +103,101 @@ const commonProperties = {
         boxShadow: "0 3px 6px rgba(0,0,0,0.1)",
       },
     },
-     legends: {
-       text: {
+    legends: {
+      text: {
         fill: "hsl(var(--muted-foreground))",
       }
     },
     labels: {
-        text: {
-            fontWeight: 'bold',
-        }
+      text: {
+        fill: "#ffffff",
+        fontWeight: 'bold',
+      }
     }
-  },
-  colors: (datum: any) => datum.data.color || '#ccc', // Use color from data
+  }
 };
 
 export default function MeditationDonutChart() {
-  const [data, setData] = useState<any[]>([]);
-  const [isClient, setIsClient] = useState(false);
+  const [data, setData] = useState<MeditationData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    setIsClient(true);
-    setData(generateMeditationData());
+    async function loadData() {
+      try {
+        const practices = await fetchMeditationData();
+        const processedData = processMeditationData(practices);
+        setData(processedData);
+        setError(null);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'Failed to load meditation data');
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    loadData();
   }, []);
 
-  if (!isClient) {
-    return <div className="h-96 w-full flex items-center justify-center text-muted-foreground">Loading meditation data...</div>;
+  const chartData = useMemo(() => {
+    if (!data) return [];
+
+    return Object.entries(data.practicesByType).map(([type, stats]) => ({
+      id: type,
+      label: type.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' '),
+      value: stats.completed,
+      color: PRACTICE_COLORS[type as keyof typeof PRACTICE_COLORS]
+    }));
+  }, [data]);
+
+  if (isLoading) {
+    return (
+      <div className="h-96 w-full flex items-center justify-center text-muted-foreground">
+        Loading meditation data...
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="h-96 w-full flex items-center justify-center text-destructive">
+        Error: {error}
+      </div>
+    );
+  }
+
+  if (!data || chartData.length === 0) {
+    return (
+      <div className="h-96 w-full flex items-center justify-center text-muted-foreground">
+        No meditation data available
+      </div>
+    );
   }
 
   return (
     <div className="h-96 w-full" data-ai-hint="meditation practice chart">
-      <ResponsivePie
-        data={data}
+      <div className="mb-4 text-sm text-muted-foreground text-center">
+        Total Sessions: {data.totalSessions} | Completion Rate: {(data.completionRate * 100).toFixed(1)}%
+        <br />
+        Total Duration: {Math.round(data.totalDuration)} minutes
+      </div>
+      <ResponsivePie<ChartData>
+        data={chartData}
+        colors={datum => datum.data.color}
         {...commonProperties}
+        legends={[
+          {
+            anchor: 'bottom',
+            direction: 'row',
+            justify: false,
+            translateX: 0,
+            translateY: 50,
+            itemWidth: 100,
+            itemHeight: 18,
+            itemTextColor: 'hsl(var(--muted-foreground))',
+            symbolSize: 18
+          }
+        ]}
       />
     </div>
   );

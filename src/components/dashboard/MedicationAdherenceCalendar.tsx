@@ -7,23 +7,47 @@ import type { MedicationAdherenceData } from '@/lib/types';
 import { addDays, format, startOfMonth } from 'date-fns';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
-// Mock Data
-const generateMockData = (): MedicationAdherenceData[] => {
-  const data: MedicationAdherenceData[] = [];
-  const today = new Date();
-  const startDate = startOfMonth(today); // Start from the beginning of the current month
-  const daysInMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0).getDate();
+// Fetch adherence data from API
+const fetchAdherenceData = async (
+  date: Date,
+  setLoading: (loading: boolean) => void,
+  setError: (error: string | null) => void
+): Promise<MedicationAdherenceData[]> => {
+  setLoading(true);
+  setError(null);
+  
+  try {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      setError('Please log in to view adherence data');
+      return [];
+    }
 
-  for (let i = 0; i < daysInMonth; i++) {
-    const currentDate = addDays(startDate, i);
-    if (currentDate > today) break; // Only generate data up to today
-
-    data.push({
-      date: currentDate,
-      adherence: Math.random(), // Random adherence between 0 and 1
+    console.log('Fetching data with token:', token);
+    const response = await fetch(`/api/medication-adherence?date=${date.toISOString()}`, {
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
     });
+
+    const data = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(data.error || 'Failed to fetch adherence data');
+    }
+
+    return data.map((item: any) => ({
+      ...item,
+      date: new Date(item.date)
+    }));
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Failed to fetch adherence data';
+    console.error('Error fetching adherence data:', error);
+    setError(message);
+    return [];
+  } finally {
+    setLoading(false);
   }
-  return data;
 };
 
 const getAdherenceColorClass = (adherence: number | undefined): string => {
@@ -40,15 +64,47 @@ export default function MedicationAdherenceCalendar() {
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [adherenceMap, setAdherenceMap] = useState<Map<string, number>>(new Map());
   const [isClient, setIsClient] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
     setIsClient(true);
-    const mockData = generateMockData();
-    const newAdherenceMap = new Map(
-      mockData.map((item) => [format(item.date, 'yyyy-MM-dd'), item.adherence])
-    );
-    setAdherenceMap(newAdherenceMap);
   }, []);
+
+  useEffect(() => {
+    if (isClient) {
+      fetchAdherenceData(currentMonth, setIsLoading, setError).then(data => {
+        const newAdherenceMap = new Map(
+          data.map((item) => [format(item.date, 'yyyy-MM-dd'), item.adherence])
+        );
+        setAdherenceMap(newAdherenceMap);
+      });
+    }
+  }, [isClient, currentMonth]);
+
+  // Show loading state
+  if (isLoading) {
+    return (
+      <div className="bg-card p-4 sm:p-6 rounded-lg shadow-md border border-border w-full max-w-md mx-auto flex justify-center items-center h-[400px]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-muted-foreground">Loading adherence data...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Show error state
+  if (error) {
+    return (
+      <div className="bg-card p-4 sm:p-6 rounded-lg shadow-md border border-border w-full max-w-md mx-auto flex justify-center items-center h-[400px]">
+        <div className="text-center text-destructive">
+          <p className="font-medium mb-2">Error</p>
+          <p className="text-sm text-muted-foreground">{error}</p>
+        </div>
+      </div>
+    );
+  }
 
 
   if (!isClient) {
@@ -119,4 +175,3 @@ export default function MedicationAdherenceCalendar() {
     </TooltipProvider>
   );
 }
-

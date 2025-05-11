@@ -27,21 +27,30 @@ const client = new MongoClient(uri, {
     version: ServerApiVersion.v1,
     strict: true,
     deprecationErrors: true,
-  }
+  },
+  // Add connection pooling settings
+  maxPoolSize: 50,
+  minPoolSize: 5,
+  maxIdleTimeMS: 60000
 });
 
+let clientPromise: Promise<MongoClient>;
+
 async function connectToDb() {
-  try {
-    // Connect the client to the server
-    await client.connect();
-    // Send a ping to confirm a successful connection
-    await client.db("admin").command({ ping: 1 });
-    console.log("Successfully connected to MongoDB!");
-    return client;
-  } catch (error) {
-    console.error("Error connecting to MongoDB:", error);
-    throw error;
+  if (!clientPromise) {
+    clientPromise = client.connect()
+      .then(async (client) => {
+        // Send a ping to confirm a successful connection
+        await client.db("admin").command({ ping: 1 });
+        console.log("Successfully connected to MongoDB!");
+        return client;
+      })
+      .catch((error) => {
+        console.error("Error connecting to MongoDB:", error);
+        throw error;
+      });
   }
+  return clientPromise;
 }
 
 // User-related operations

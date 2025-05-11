@@ -2,10 +2,30 @@ import { GoogleGenAI, FunctionCallingConfigMode, Type } from '@google/genai';
 import { NextRequest, NextResponse } from 'next/server';
 import { mockProducts, mockPractitioners } from '@/lib/mockData';
 import type { Product, Practitioner } from '@/lib/types';
+import { subDays } from 'date-fns';
 
 // Initialize the Google GenAI client
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const genAI = new GoogleGenAI({ apiKey: GEMINI_API_KEY });
+
+const getAnalyticsDataDeclaration = {
+  name: 'getAnalyticsData',
+  description: 'Get analytics data for sleep, mental health, or other metrics based on user query.',
+  parameters: {
+    type: Type.OBJECT,
+    properties: {
+      metric: {
+        type: Type.STRING,
+        description: 'The type of analytics data requested (e.g., sleep-wellness, mental-health, meditation)',
+      },
+      timeframe: {
+        type: Type.STRING,
+        description: 'Timeframe for the data (e.g., week, month)',
+      }
+    },
+    required: ['metric', 'timeframe'],
+  },
+};
 
 const getProductsForPurchaseDeclaration = {
   name: 'getProductsForPurchase',
@@ -63,6 +83,7 @@ You provide informative and helpful advice based on Ayurvedic principles.
 User's question: ${question}
 
 Follow these guidelines:
+- If the user asks about sleep patterns, mental health, or other analytics, call the getAnalyticsData function with the relevant metric and timeframe.
 - If the user asks to buy, purchase, or shop for a product, call the getProductsForPurchase function with relevant keywords and count (1-3).
 - Otherwise, your primary goal is to understand the user's question and provide direct Ayurvedic advice or information.
 - Be conversational, empathetic, and helpful in your response.
@@ -79,16 +100,17 @@ Follow these guidelines:
         toolConfig: {
           functionCallingConfig: {
             mode: FunctionCallingConfigMode.ANY,
-            allowedFunctionNames: ['getProductsForPurchase', 'getPractitionersForBooking'],
+            allowedFunctionNames: ['getProductsForPurchase', 'getPractitionersForBooking', 'getAnalyticsData'],
           },
         },
-        tools: [{ functionDeclarations: [getProductsForPurchaseDeclaration, getPractitionersForBookingDeclaration] }],
+        tools: [{ functionDeclarations: [getProductsForPurchaseDeclaration, getPractitionersForBookingDeclaration, getAnalyticsDataDeclaration] }],
       },
     });
 
     let text = result.text || '';
     let products: Product[] = [];
     let practitioners: Practitioner[] = [];
+    let analyticsData: any = null;
 
     // Check for function calls in the response
     if (result.functionCalls && Array.isArray(result.functionCalls)) {
@@ -112,7 +134,7 @@ Follow these guidelines:
             text = 'Here are some products you might like:';
           }
         }
-        if (fnCall.name === 'getPractitionersForBooking' && fnCall.args) {
+        else if (fnCall.name === 'getPractitionersForBooking' && fnCall.args) {
           const { keywords, count } = fnCall.args as { keywords?: string; count?: number };
           const filtered = mockPractitioners.filter(
             (p: Practitioner) =>
@@ -130,10 +152,26 @@ Follow these guidelines:
             text = 'Here are some practitioners you might like to book:';
           }
         }
+        else if (fnCall.name === 'getAnalyticsData' && fnCall.args) {
+          const { metric, timeframe } = fnCall.args as { metric: string; timeframe: string };
+          const authHeader = request.headers.get('Authorization');
+          
+          if (!authHeader?.startsWith('Bearer ')) {
+            text = 'Please log in to view your analytics data.';
+          } else {
+            analyticsData = {
+              type: metric,
+              timeframe
+            };
+            if (!text) {
+              text = `Here's your ${metric.replace('-', ' ')} data for the last ${timeframe}:`;
+            }
+          }
+        }
       }
     }
 
-    return NextResponse.json({ text, products, practitioners });
+    return NextResponse.json({ text, products, practitioners, analyticsData });
   } catch (error) {
     console.error('Error in chatbot API:', error);
     const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred';

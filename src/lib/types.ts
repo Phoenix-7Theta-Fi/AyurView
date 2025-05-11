@@ -92,6 +92,35 @@ export interface TreatmentPlanActivity {
   status: 'pending' | 'completed' | 'missed'; // For potential tracking
 }
 
+export interface WorkoutMetrics {
+  userId: string;
+  date: Date;
+  metrics: {
+    strength: {
+      actual: number;
+      target: number;
+    };
+    flexibility: {
+      actual: number;
+      target: number;
+    };
+    vo2Max: {
+      actual: number;
+      target: number;
+    };
+    endurance: {
+      actual: number;
+      target: number;
+    };
+    agility: {
+      actual: number;
+      target: number;
+    };
+  };
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export interface GanttTask {
   id: string;
   name: string;
@@ -99,4 +128,68 @@ export interface GanttTask {
   endDate: string; // ISO date string
   category: 'Wellness' | 'Diet' | 'Medication' | 'Therapy' | 'Fitness' | 'Lifestyle';
   status?: 'pending' | 'in-progress' | 'completed';
+}
+
+export interface CardioPerformanceData {
+  userId: string;
+  date: Date;
+  metrics: {
+    duration: number; // in minutes
+    distance: number; // in kilometers
+  };
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface MeditationPractice {
+  timestamp: Date;
+  practiceType: 'mindfulness' | 'breath-work' | 'body-scan' | 'loving-kindness' | 'transcendental' | 'guided';
+  duration: number; // in minutes
+  completed: boolean;
+}
+
+export interface MeditationData {
+  practicesByType: {
+    [key: string]: {
+      completed: number;
+      attempted: number;
+      totalDuration: number;
+    };
+  };
+  totalSessions: number;
+  completionRate: number;
+  totalDuration: number;
+}
+
+export interface BiomarkerData {
+  userId: string;
+  biomarkerName: string;
+  value: number;
+  unit: string;
+  date: Date;
+  referenceRange: {
+    min: number;
+    max: number;
+  };
+  targetValue: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface SleepWellnessData {
+  userId: string;
+  date: Date;
+  sleepMetrics: {
+    rem: number;
+    deep: number;
+    light: number;
+    awake: number;
+    totalDuration: number;
+  };
+  mentalWellness: {
+    stressLevel: number;  // 1-10 scale
+    moodScore: number;    // 1-10 scale
+  };
+  createdAt: Date;
+  updatedAt: Date;
 }

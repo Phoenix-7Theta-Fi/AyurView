@@ -15,11 +15,16 @@ import { useToast } from "@/hooks/use-toast";
 
 import ProductCard from '@/components/shop/ProductCard';
 import PractitionerCard from '@/components/practitioners/PractitionerCard';
+import AnalyticsCard from '@/components/chatbot/AnalyticsCard';
 import type { Product, Practitioner } from '@/lib/types';
 
 export type ChatbotMessage = ChatMessage & {
   products?: Product[];
   practitioners?: Practitioner[];
+  analyticsData?: {
+    type: string;
+    timeframe: string;
+  } | null;
 };
 
 export default function ChatInterface() {
@@ -67,10 +72,13 @@ export default function ChatInterface() {
 
     try {
       // Updated API endpoint from '/api/ayurvedic-guidance' to '/api/chatbot'
+      // Get token for authenticated requests
+      const token = localStorage.getItem('token');
       const response = await fetch('/api/chatbot', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
         },
         body: JSON.stringify({ question: currentInput }),
       });
@@ -80,6 +88,7 @@ export default function ChatInterface() {
       let assistantContent = data.text || 'I received a response, but it was empty.';
       let products: Product[] = Array.isArray(data.products) ? data.products : [];
       let practitioners: Practitioner[] = Array.isArray(data.practitioners) ? data.practitioners : [];
+      let analyticsData = data.analyticsData || null;
 
       if (data.error) {
         assistantContent = `Sorry, I encountered an error: ${data.error}. Please try again.`;
@@ -97,6 +106,7 @@ export default function ChatInterface() {
         timestamp: new Date(),
         products,
         practitioners,
+        analyticsData,
       };
       setMessages((prev) => [...prev, assistantMessage]);
 
@@ -182,6 +192,12 @@ export default function ChatInterface() {
                           <PractitionerCard practitioner={practitioner} />
                         </div>
                       ))}
+                    </div>
+                  )}
+                  {/* Render analytics card if present */}
+                  {message.analyticsData && (
+                    <div className="mt-4 w-full">
+                      <AnalyticsCard data={message.analyticsData} />
                     </div>
                   )}
                 </div>

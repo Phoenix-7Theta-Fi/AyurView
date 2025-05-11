@@ -1,43 +1,9 @@
-
 'use client';
 
 import { ResponsiveBar } from '@nivo/bar';
 import { ResponsiveLine, LineSvgProps, Serie } from '@nivo/line';
 import { useMemo, useState, useEffect } from 'react';
 import { format, subDays } from 'date-fns';
-
-// Helper to generate mock data for the last 30 days
-const generateSleepData = () => {
-  const barData = [];
-  const lineDataStress: Serie = { id: 'Stress Level (1-10)', data: [], color: '#FF6347' }; // Tomato red
-  const lineDataMood: Serie = { id: 'Mood Score (1-10)', data: [], color: '#4682B4' }; // Steel blue
-
-  const today = new Date();
-  for (let i = 29; i >= 0; i--) {
-    const day = subDays(today, i);
-    const formattedDay = format(day, 'MMM dd');
-
-    const totalSleep = Math.floor(Math.random() * 3) + 6; // 6-8 hours total
-    const rem = parseFloat((totalSleep * (Math.random() * 0.15 + 0.15)).toFixed(1)); // 15-30%
-    const deep = parseFloat((totalSleep * (Math.random() * 0.1 + 0.1)).toFixed(1)); // 10-20%
-    const light = parseFloat((totalSleep - rem - deep - (Math.random()*0.5)).toFixed(1)); // Remainder, ensure positive
-    const awake = parseFloat((totalSleep * (Math.random() * 0.05)).toFixed(1));
-
-
-    barData.push({
-      day: formattedDay,
-      REM: Math.max(0, rem),
-      Deep: Math.max(0, deep),
-      Light: Math.max(0, light),
-      Awake: Math.max(0, awake),
-    });
-
-    lineDataStress.data.push({ x: formattedDay, y: Math.floor(Math.random() * 7) + 2 }); // Stress 2-8
-    lineDataMood.data.push({ x: formattedDay, y: Math.floor(Math.random() * 6) + 4 });   // Mood 4-9
-  }
-  return { barData, lineData: [lineDataStress, lineDataMood] };
-};
-
 
 const nivoTheme = {
     background: "hsl(var(--card))",
@@ -89,14 +55,69 @@ const nivoTheme = {
     }
   };
 
-
 export default function SleepMetricsChart() {
   const [chartData, setChartData] = useState<{ barData: any[], lineData: Serie[] }>({ barData: [], lineData: [] });
-  const [isClient, setIsClient] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    setIsClient(true);
-    setChartData(generateSleepData());
+    async function fetchData() {
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) {
+          throw new Error('No authentication token found');
+        }
+
+        // Get date range for the last 30 days
+        const endDate = new Date();
+        const startDate = subDays(endDate, 29);
+
+        const response = await fetch(
+          `/api/sleep-wellness?startDate=${startDate.toISOString()}&endDate=${endDate.toISOString()}`,
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`
+            }
+          }
+        );
+
+        if (!response.ok) {
+          const error = await response.json();
+          throw new Error(error.error || 'Failed to fetch sleep wellness data');
+        }
+
+        const result = await response.json();
+        
+        if (!result.success || !result.data) {
+          throw new Error('Invalid data format received');
+        }
+
+        // Transform API data into chart format
+        const barData = result.data;
+        const lineDataStress: Serie = {
+          id: 'Stress Level (1-10)',
+          data: result.data.map((d: any) => ({ x: d.day, y: d.stressLevel })),
+          color: '#FF6347'
+        };
+        const lineDataMood: Serie = {
+          id: 'Mood Score (1-10)',
+          data: result.data.map((d: any) => ({ x: d.day, y: d.moodScore })),
+          color: '#4682B4'
+        };
+
+        setChartData({
+          barData,
+          lineData: [lineDataStress, lineDataMood]
+        });
+        setError(null);
+      } catch (err: any) {
+        setError(err.message || 'Failed to load sleep wellness data');
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    fetchData();
   }, []);
 
   const { barData, lineData } = chartData;
@@ -113,12 +134,10 @@ export default function SleepMetricsChart() {
       valueScale: { type: 'linear' as const },
       indexScale: { type: 'band' as const, round: true },
       colors: ['#5DADE2', '#3498DB', '#85C1E9', '#AED6F1'], // Shades of blue
-      borderColor: {
-        from: 'color',
-        modifiers: [['darker', 1.6]],
-      },
+      borderColor: { from: 'color' },
       axisTop: null,
       axisRight: null,
+      borderRadius: 2,
       axisBottom: {
         tickSize: 5,
         tickPadding: 5,
@@ -137,13 +156,9 @@ export default function SleepMetricsChart() {
       },
       labelSkipWidth: 12,
       labelSkipHeight: 12,
-      labelTextColor: {
-        from: 'color',
-        modifiers: [['darker', 3]],
-      },
+      labelTextColor: '#ffffff',
       legends: [
         {
-          title: 'Sleep Stages',
           dataFrom: 'keys' as const,
           anchor: 'bottom-right' as const,
           direction: 'column' as const,
@@ -156,9 +171,10 @@ export default function SleepMetricsChart() {
           itemDirection: 'left-to-right' as const,
           itemOpacity: 0.85,
           symbolSize: 12,
-           effects: [
+          symbolShape: 'circle' as const,
+          effects: [
             {
-              on: 'hover',
+              on: 'hover' as const,
               style: {
                 itemOpacity: 1,
               },
@@ -175,42 +191,43 @@ export default function SleepMetricsChart() {
       xScale: { type: 'point' },
       yScale: {
         type: 'linear',
-        min: 0, // Mental health scores typically non-negative
-        max: 10, // Assuming score out of 10
+        min: 0,
+        max: 10,
         stacked: false,
         reverse: false,
       },
-      margin: barChartProps.margin, // Match bar chart margins
+      margin: barChartProps.margin,
       axisTop: null,
-      axisLeft: null, // Use bar chart's left axis
-      axisRight: { // Display this on the right
+      axisLeft: null,
+      axisRight: {
         tickSize: 5,
         tickPadding: 5,
         tickRotation: 0,
         legend: 'Mental Health Score (1-10)',
         legendPosition: 'middle' as const,
-        legendOffset: 45, // Adjust as needed
-        format: (value: any) => Math.round(value)
+        legendOffset: 45,
       },
-      axisBottom: null, // Use bar chart's bottom axis
       pointSize: 8,
       pointColor: { theme: 'background' },
       pointBorderWidth: 2,
       pointBorderColor: { from: 'serieColor' },
       useMesh: true,
       enableGridX: false,
-      enableGridY: false, // Bar chart handles grid
-      theme: nivoTheme,
-      colors: (serie: any) => serie.color || '#ccc', // Use color from serie data
+      enableGridY: false,
+      theme: {
+        ...nivoTheme,
+        background: 'transparent',
+        grid: { line: { stroke: 'transparent' } },
+      },
+      colors: (serie: any) => serie.color || '#ccc',
       lineWidth: 2,
       legends: [
         {
-          title: 'Mental Health',
           anchor: 'bottom-right' as const,
           direction: 'column' as const,
           justify: false,
-          translateX: 120, // Align with bar chart legends
-          translateY: -100, // Position above sleep legends
+          translateX: 120,
+          translateY: -100,
           itemsSpacing: 2,
           itemWidth: 100,
           itemHeight: 20,
@@ -220,7 +237,7 @@ export default function SleepMetricsChart() {
           symbolShape: 'circle' as const,
           effects: [
             {
-              on: 'hover',
+              on: 'hover' as const,
               style: {
                 itemOpacity: 1,
               },
@@ -230,8 +247,12 @@ export default function SleepMetricsChart() {
       ],
   };
   
-  if (!isClient) {
+  if (isLoading) {
     return <div className="h-[500px] w-full relative flex items-center justify-center text-muted-foreground">Loading sleep data...</div>;
+  }
+
+  if (error) {
+    return <div className="h-[500px] w-full relative flex items-center justify-center text-destructive">{error}</div>;
   }
 
   return (
@@ -241,21 +262,7 @@ export default function SleepMetricsChart() {
         <ResponsiveLine
           {...lineChartProps}
           data={lineData}
-          // Important: make line chart transparent so bar chart is visible and interactive
           layers={['grid', 'markers', 'axes', 'areas', 'crosshair', 'lines', 'points', 'slices', 'mesh', 'legends']}
-          theme={{
-            ...nivoTheme,
-            background: 'transparent', // Crucial for overlay
-            grid: { line: { stroke: 'transparent' } }, // Hide line chart grid if bar chart has one
-            axis: { // Hide line chart axes that overlap with bar chart
-                ...nivoTheme.axis,
-                bottom: undefined,
-                left: undefined,
-            }
-          }}
-          // Disable interactions on line chart points if they interfere with bar tooltips
-          // enablePoints={false} 
-          // enableSlices="x" // Enable tooltip for line chart
         />
       </div>
     </div>

@@ -1,41 +1,37 @@
-
 'use client';
 
 import { ResponsiveLine } from '@nivo/line';
-import { useMemo, useState, useEffect } from 'react';
-import { format, subDays, addDays } from 'date-fns';
+import { useState, useEffect } from 'react';
+import { format } from 'date-fns';
 
+const transformCardioData = (rawData: any[]) => {
+  const durationSeries = {
+    id: 'Duration (min)',
+    color: '#4CAF50', // Primary Green
+    data: [] as { x: string; y: number }[],
+  };
+  const distanceSeries = {
+    id: 'Distance (km)',
+    color: '#A0522D', // Accent Brown
+    data: [] as { x: string; y: number }[],
+  };
 
-const generateCardioData = () => {
-  const today = new Date();
-  const data = [
-    {
-      id: 'Duration (min)',
-      color: '#4CAF50', // Primary Green
-      data: [] as { x: string; y: number }[],
-    },
-    {
-      id: 'Distance (km)',
-      color: '#A0522D', // Accent Brown
-      data: [] as { x: string; y: number }[],
-    },
-  ];
+  // Sort data by date ascending
+  rawData.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
-  for (let i = 29; i >= 0; i--) {
-    const day = subDays(today, i);
-    // Simulate workout every other day
-    if (i % 2 === 0) {
-      data[0].data.push({
-        x: format(day, 'MMM dd'),
-        y: Math.floor(Math.random() * 40) + 20, // Duration 20-60 min
-      });
-      data[1].data.push({
-        x: format(day, 'MMM dd'),
-        y: parseFloat((Math.random() * 8 + 2).toFixed(1)), // Distance 2-10 km
-      });
-    }
-  }
-  return data;
+  rawData.forEach(record => {
+    const formattedDate = format(new Date(record.date), 'MMM dd');
+    durationSeries.data.push({
+      x: formattedDate,
+      y: record.metrics.duration
+    });
+    distanceSeries.data.push({
+      x: formattedDate,
+      y: record.metrics.distance
+    });
+  });
+
+  return [durationSeries, distanceSeries];
 };
 
 const commonProperties = {
@@ -92,7 +88,7 @@ const commonProperties = {
       symbolBorderColor: 'rgba(0, 0, 0, .5)',
       effects: [
         {
-          on: 'hover',
+          on: "hover" as const,
           style: {
             itemBackground: 'rgba(0, 0, 0, .03)',
             itemOpacity: 1,
@@ -155,16 +151,75 @@ const commonProperties = {
 };
 
 export default function CardioChart() {
-  const [data, setData] = useState<any[]>([]);
-  const [isClient, setIsClient] = useState(false);
+  const [data, setData] = useState<any[]>([
+    {
+      id: 'Duration (min)',
+      color: '#4CAF50',
+      data: [],
+    },
+    {
+      id: 'Distance (km)',
+      color: '#A0522D',
+      data: [],
+    }
+  ]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    setIsClient(true);
-    setData(generateCardioData());
+    const fetchData = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        if (!token) {
+          setError('Authentication required');
+          setIsLoading(false);
+          return;
+        }
+
+        const response = await fetch('/api/cardio-performance', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (!response.ok) {
+          throw new Error('Failed to fetch cardio data');
+        }
+
+        const rawData = await response.json();
+        setData(transformCardioData(rawData));
+        setIsLoading(false);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'An error occurred');
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
   }, []);
-  
-  if (!isClient) {
-    return <div className="h-96 w-full flex items-center justify-center text-muted-foreground">Loading cardio data...</div>;
+
+  if (error) {
+    return (
+      <div className="h-96 w-full flex items-center justify-center text-muted-foreground">
+        Error: {error}
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return (
+      <div className="h-96 w-full flex items-center justify-center text-muted-foreground">
+        Loading cardio data...
+      </div>
+    );
+  }
+
+  if (!data[0].data.length && !data[1].data.length) {
+    return (
+      <div className="h-96 w-full flex items-center justify-center text-muted-foreground">
+        No cardio data available
+      </div>
+    );
   }
 
   return (

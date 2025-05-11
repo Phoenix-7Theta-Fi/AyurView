@@ -3,7 +3,42 @@
 
 import { ResponsiveRadar } from '@nivo/radar';
 import { useState, useEffect } from 'react';
-import { mockWorkoutRadarData } from '@/lib/mockData';
+
+// Types for the radar data
+interface RadarDataPoint {
+  metric: string;
+  'Actual Score': number;
+  'Target Score': number;
+}
+
+async function fetchWorkoutMetrics(date?: Date): Promise<RadarDataPoint[]> {
+  try {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      throw new Error('No authentication token found');
+    }
+
+    let url = '/api/workout-overview';
+    if (date) {
+      url += `?date=${date.toISOString()}`;
+    }
+
+    const response = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch workout metrics');
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error('Error fetching workout metrics:', error);
+    return [];
+  }
+}
 
 const commonProperties = {
   padding: 0.4,
@@ -86,21 +121,49 @@ const commonProperties = {
 };
 
 export default function WorkoutRadialChart() {
-  const [data, setData] = useState<any[]>([]);
+  const [data, setData] = useState<RadarDataPoint[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [isClient, setIsClient] = useState(false);
 
   useEffect(() => {
     setIsClient(true);
-    setData(mockWorkoutRadarData);
+    const loadData = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        const metricsData = await fetchWorkoutMetrics();
+        setData(metricsData);
+      } catch (err) {
+        setError('Failed to load workout metrics');
+        console.error('Error loading workout metrics:', err);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadData();
   }, []);
 
-  if (!isClient) {
+  if (!isClient || isLoading) {
     return <div className="h-96 w-full flex items-center justify-center text-muted-foreground">Loading workout data...</div>;
   }
 
 
+  if (error) {
+    return <div className="h-96 w-full flex items-center justify-center text-muted-foreground">
+      Error loading workout data: {error}
+    </div>;
+  }
+
+  if (data.length === 0) {
+    return <div className="h-96 w-full flex items-center justify-center text-muted-foreground">
+      No workout data available
+    </div>;
+  }
+
   return (
-    <div className="h-96 w-full" data-ai-hint="fitness score comparison">
+    <div className="h-96 w-full relative" data-ai-hint="fitness score comparison">
       <ResponsiveRadar
         data={data}
         keys={['Actual Score', 'Target Score']}
