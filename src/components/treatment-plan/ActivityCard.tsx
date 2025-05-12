@@ -4,15 +4,17 @@
 import type { TreatmentPlanActivity } from '@/lib/types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { CheckCircle, XCircle, AlertCircle, ArrowRight } from 'lucide-react';
-import DynamicIcon from './DynamicIcon'; // Import the new DynamicIcon component
+import DynamicIcon from './DynamicIcon';
 
 interface ActivityCardProps {
   activity: TreatmentPlanActivity;
   onClick: () => void;
+  onStatusUpdate?: (activityId: string, status: 'pending' | 'completed' | 'missed') => Promise<void>;
 }
 
-export default function ActivityCard({ activity, onClick }: ActivityCardProps) {
+export default function ActivityCard({ activity, onClick, onStatusUpdate }: ActivityCardProps) {
   const getStatusIcon = () => {
     switch (activity.status) {
       case 'completed':
@@ -63,7 +65,22 @@ export default function ActivityCard({ activity, onClick }: ActivityCardProps) {
             </div>
           </div>
         </div>
-        <ArrowRight size={20} className="text-muted-foreground shrink-0" />
+          <div className="flex gap-2 items-center">
+            {activity.status !== 'completed' && onStatusUpdate && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="shrink-0"
+                onClick={(e) => {
+                  e.stopPropagation(); // Prevent modal from opening
+                  onStatusUpdate(activity.id, 'completed');
+                }}
+              >
+                Mark as Completed
+              </Button>
+            )}
+            <ArrowRight size={20} className="text-muted-foreground shrink-0" />
+          </div>
       </CardContent>
     </Card>
   );

@@ -5,12 +5,14 @@ import type { TreatmentPlanActivity } from '@/lib/types';
 import ActivityCard from './ActivityCard';
 import ActivityDetailModal from './ActivityDetailModal';
 import React, { useState } from 'react';
+import { useDailySchedule } from '@/hooks/use-daily-schedule';
 
 interface DailyScheduleViewProps {
   activities: TreatmentPlanActivity[];
 }
 
 export default function DailyScheduleView({ activities }: DailyScheduleViewProps) {
+  const { updateActivityStatus } = useDailySchedule();
   const [selectedActivity, setSelectedActivity] = useState<TreatmentPlanActivity | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -31,7 +33,12 @@ export default function DailyScheduleView({ activities }: DailyScheduleViewProps
     <div className="space-y-4">
       {sortedActivities.length > 0 ? (
         sortedActivities.map(activity => (
-          <ActivityCard key={activity.id} activity={activity} onClick={() => handleCardClick(activity)} />
+          <ActivityCard 
+            key={activity.id} 
+            activity={activity} 
+            onClick={() => handleCardClick(activity)}
+            onStatusUpdate={updateActivityStatus}
+          />
         ))
       ) : (
         <p className="text-muted-foreground text-center py-6">No activities scheduled for today.</p>
