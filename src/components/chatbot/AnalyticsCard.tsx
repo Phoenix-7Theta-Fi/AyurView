@@ -3,6 +3,12 @@
 import { Card } from '@/components/ui/card';
 import { Loader2 } from 'lucide-react';
 import SleepMetricsChart from '@/components/dashboard/charts/SleepMetricsChart';
+import DietAnalyticsChart from '@/components/dashboard/charts/DietAnalyticsChart';
+import BiomarkersChart from '@/components/dashboard/charts/BiomarkersChart';
+import CardioChart from '@/components/dashboard/charts/CardioChart';
+import MeditationDonutChart from '@/components/dashboard/charts/MeditationDonutChart';
+import WorkoutRadialChart from '@/components/dashboard/charts/WorkoutRadialChart';
+import YogaSunburstChart from '@/components/dashboard/charts/YogaSunburstChart';
 
 type AnalyticsCardProps = {
   data: {
@@ -17,7 +23,18 @@ export default function AnalyticsCard({ data }: AnalyticsCardProps) {
     switch (data.type) {
       case 'sleep-wellness':
         return <SleepMetricsChart />;
-      // Add more chart types as needed
+      case 'diet-analytics':
+        return <DietAnalyticsChart />;
+      case 'biomarkers':
+        return <BiomarkersChart />;
+      case 'cardio-performance':
+        return <CardioChart />;
+      case 'meditation-practices':
+        return <MeditationDonutChart />;
+      case 'workout-overview':
+        return <WorkoutRadialChart />;
+      case 'yoga-practices':
+        return <YogaSunburstChart />;
       default:
         return (
           <div className="p-4 text-muted-foreground">
@@ -38,7 +55,7 @@ export default function AnalyticsCard({ data }: AnalyticsCardProps) {
             Data for the last {data.timeframe}
           </p>
         </div>
-        <div className="w-full h-[400px]">
+        <div className="w-full h-[500px]">
           {renderChart()}
         </div>
       </div>

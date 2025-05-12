@@ -16,15 +16,17 @@ import { useToast } from "@/hooks/use-toast";
 import ProductCard from '@/components/shop/ProductCard';
 import PractitionerCard from '@/components/practitioners/PractitionerCard';
 import AnalyticsCard from '@/components/chatbot/AnalyticsCard';
-import type { Product, Practitioner } from '@/lib/types';
+import type { Product, Practitioner, TreatmentPlanActivity } from '@/lib/types';
+import ScheduleActivityCard from '@/components/chatbot/ScheduleActivityCard';
 
 export type ChatbotMessage = ChatMessage & {
   products?: Product[];
   practitioners?: Practitioner[];
-  analyticsData?: {
+  analyticsData?: Array<{
     type: string;
     timeframe: string;
-  } | null;
+  }> | null;
+  scheduleActivities?: TreatmentPlanActivity[];
 };
 
 export default function ChatInterface() {
@@ -48,7 +50,7 @@ export default function ChatInterface() {
       {
         id: 'initial-greeting',
         role: 'assistant',
-        content: "Namaste! I am AyurAid. I can help you with Ayurvedic guidance and information. How can I assist you today?",
+        content: "Namaste! I am AyurAid, your Ayurvedic wellness assistant. I can help you with:\n\n📊 Health Analytics:\n- Sleep patterns and quality\n- Diet and nutrition tracking\n- Biomarkers and health indicators\n- Cardio performance\n- Meditation progress\n- Workout overview\n- Yoga practice stats\n\n📅 Daily Schedule:\n- View upcoming activities\n- Check today's schedule\n- Find your next activity\n- Filter by activity type\n\n💡 Try asking:\n- \"Show my sleep data\"\n- \"What's my next activity?\"\n- \"What's on my schedule today?\"\n- \"Show my remaining wellness activities\"\n\nI can also provide Ayurvedic guidance and recommend products or practitioners. How can I assist you today?",
         timestamp: new Date(),
         products: [],
       }
@@ -89,6 +91,7 @@ export default function ChatInterface() {
       let products: Product[] = Array.isArray(data.products) ? data.products : [];
       let practitioners: Practitioner[] = Array.isArray(data.practitioners) ? data.practitioners : [];
       let analyticsData = data.analyticsData || null;
+      let scheduleActivities = Array.isArray(data.scheduleActivities) ? data.scheduleActivities : [];
 
       if (data.error) {
         assistantContent = `Sorry, I encountered an error: ${data.error}. Please try again.`;
@@ -107,6 +110,7 @@ export default function ChatInterface() {
         products,
         practitioners,
         analyticsData,
+        scheduleActivities,
       };
       setMessages((prev) => [...prev, assistantMessage]);
 
@@ -153,11 +157,10 @@ export default function ChatInterface() {
                       </Avatar>
                     )}
                     <Card
-                      className={`max-w-xs sm:max-w-md md:max-w-lg lg:max-w-xl p-3 sm:p-4 rounded-2xl shadow-md animate-in fade-in-0 slide-in-from-bottom-4 duration-300 ${
-                        message.role === 'user'
-                          ? 'bg-accent text-accent-foreground rounded-br-none'
-                          : 'bg-background border-border text-foreground rounded-bl-none'
-                      }`}
+                      className={`${message.role === 'user' 
+                        ? 'max-w-xs sm:max-w-md md:max-w-lg lg:max-w-xl bg-accent text-accent-foreground rounded-br-none ml-auto'
+                        : 'w-full bg-background border-border text-foreground rounded-bl-none'
+                      } p-3 sm:p-4 rounded-2xl shadow-md animate-in fade-in-0 slide-in-from-bottom-4 duration-300`}
                     >
                       <CardContent className="p-0 text-sm sm:text-base leading-relaxed">
                         <p className="whitespace-pre-wrap">{message.content}</p>
@@ -176,7 +179,7 @@ export default function ChatInterface() {
                   </div>
                   {/* Render product cards if present */}
                   {message.products && message.products.length > 0 && (
-                    <div className="flex flex-wrap gap-4 mt-2">
+                    <div className={`flex flex-wrap gap-4 mt-2 ${message.role === 'assistant' ? 'w-full' : ''}`}>
                       {message.products.map((product) => (
                         <div key={product.id} className="w-72">
                           <ProductCard product={product} />
@@ -186,7 +189,7 @@ export default function ChatInterface() {
                   )}
                   {/* Render practitioner cards if present */}
                   {message.practitioners && message.practitioners.length > 0 && (
-                    <div className="flex flex-wrap gap-4 mt-2">
+                    <div className={`flex flex-wrap gap-4 mt-2 ${message.role === 'assistant' ? 'w-full' : ''}`}>
                       {message.practitioners.map((practitioner) => (
                         <div key={practitioner.id} className="w-80">
                           <PractitionerCard practitioner={practitioner} />
@@ -194,10 +197,24 @@ export default function ChatInterface() {
                       ))}
                     </div>
                   )}
-                  {/* Render analytics card if present */}
-                  {message.analyticsData && (
-                    <div className="mt-4 w-full">
-                      <AnalyticsCard data={message.analyticsData} />
+                  {/* Render analytics cards if present */}
+                  {message.analyticsData && message.analyticsData.length > 0 && (
+                    <div className={`mt-4 space-y-4 ${message.role === 'assistant' ? 'w-full' : ''}`}>
+                      {message.analyticsData.map((data, index) => (
+                        <div key={`${data.type}-${index}`} className="max-w-5xl mx-auto">
+                          <AnalyticsCard data={data} />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {/* Render schedule activity cards if present */}
+                  {message.scheduleActivities && message.scheduleActivities.length > 0 && (
+                    <div className={`mt-4 space-y-3 ${message.role === 'assistant' ? 'w-full' : ''}`}>
+                      {message.scheduleActivities.map((activity) => (
+                        <div key={activity.id} className="max-w-md">
+                          <ScheduleActivityCard activity={activity} />
+                        </div>
+                      ))}
                     </div>
                   )}
                 </div>
@@ -209,7 +226,7 @@ export default function ChatInterface() {
                       <Sparkles size={20} />
                     </AvatarFallback>
                   </Avatar>
-                  <Card className="max-w-xs sm:max-w-md p-3 sm:p-4 rounded-2xl shadow-md bg-background border-border text-foreground rounded-bl-none">
+                  <Card className="w-full p-3 sm:p-4 rounded-2xl shadow-md bg-background border-border text-foreground rounded-bl-none">
                     <CardContent className="p-0 flex items-center gap-2">
                       <Loader2 className="h-5 w-5 animate-spin text-primary" />
                       <span className="text-muted-foreground">Thinking...</span>
